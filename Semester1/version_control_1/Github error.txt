@@ -1,0 +1,71 @@
+Version control -Github error
+*Updates were rejected because the tip of your current branch is behind
+
+This error happens because the remote branch has new commits that your local branch does not have. 
+Git stops your push so you do not accidentally erase other people's work. 
+To fix it, you need to download and mix those remote changes into your local computer before you 
+try to push again.
+
+*refusing to merge unrelated histories git pull
+
+"while using github in powershell i encountered a message stating on branch main nothing to commit, working tree clean. 
+however when i try to push my work to the repository it states Updates were rejected because the tip of your current branch 
+is behind and on the website my folders are gone but i can see the commits." 
+
+Troubleshooting involes a 6 step process
+1. identify the problem 
+2.establish a theory
+3.test it
+4.create a plan of action
+5.implement the solution
+6.document findings
+
+This document is the 6th step documentation of my findings of the solution.
+
+This is a common Git situation. Here's what's happening and how to fix it: the local branch has diverged from (or is behind) the remote — the remote has commits 
+the local repo doesn't have, even though your working tree is clean locally.
+
+Why "working tree clean" but push fails: "Nothing to commit" just means you have no uncommitted changes locally. 
+It doesn't mean your local branch is up to date with the remote. Someone (or something — a web edit, another machine, a GitHub Actions commit, 
+a deleted-and-recreated file via the web UI) added commits to the remote that you don't have locally.
+
+Why your folders look "gone" on the website: likely a commit on the remote deleted or restructured them, 
+and your local branch simply hasn't pulled that history down yet — so locally everything still looks fine to you, but you're out of sync with what's actually latest on GitHub.
+
+Here's how to sort it out safely:
+
+1
+Check status and log
+Run `git status` and `git log --oneline -5` locally, then compare with the commit history on GitHub.com. 
+This tells you how many commits you're behind and gives context before you touch anything.
+
+2
+Fetch remote changes without merging
+Run `git fetch origin`. This downloads the remote's latest commits into your local repo (as `origin/main`) but does NOT change your working files yet, 
+so it's safe to do first.
+
+3
+Compare your branch to the remote
+Run `git log HEAD..origin/main --oneline` to see what commits are on the remote that you don't have, and `git log origin/main..HEAD --oneline` 
+to see what commits you have that the remote doesn't. This tells you whether you're simply behind, or have diverged (both sides have new commits).
+
+4
+Pull with a merge or rebase
+If you just want to catch up safely: `git pull origin main`. If it creates a merge commit you don't want, you can instead do `git pull --rebase origin main` 
+to replay your local commits on top of the remote's. If your folders were deleted on the remote, this pull will delete them locally too — check step 3 first so you're not surprised.
+
+5
+Resolve any conflicts
+If Git reports conflicts, open the flagged files, look for the `<<<<<<<`, `=======`, `>>>>>>>` markers, decide what content to keep, save, then run `git add <file>` 
+and `git commit` (or `git rebase --continue` if rebasing).
+
+6
+Push again
+Once your local branch is up to date (or has the merge/rebase resolved), run `git push origin main`. It should now succeed since your branch is no longer behind.
+
+7
+If you're sure your local copy is the correct one
+Only if you're confident the remote's changes should be discarded and your local version is the one you want to win, 
+you can force-push with `git push origin main --force`. Be careful — this will overwrite the remote history and anyone else's changes on that branch will be lost. 
+Don't do this unless you understand why the remote diverged.
+
