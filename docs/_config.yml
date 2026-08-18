@@ -10,22 +10,23 @@ branding:
 
 # Personal Details
 personal_details:
-  full_name: "[YOUR FULL NAME]"
-  graduation_date: "[YOUR GRADUATION DATE]"
-  profile_photo: "/assets/images/profile-placeholder.svg"
+  full_name: "[Kyrell Green]"
+  graduation_date: "[December 2026]"
+  profile_photo: "/assets/images/profile_pic.jpeg"
 
 # About Me
 about_me:
-  bio_summary: "[Write a short personal introduction here. Include your interests, values, and aspirations.]"
-  interests_values: "[Expand on your personal interests and core values here.]"
+  bio_summary: "[My name is Kyrell Green. Im interested in getting into the tech industry after shifting careers. I aquired technological skills through hobbies, research trial and error.
+                  aspire to complete the DAE 6 month program, get certified and step forward into a career that I actually enjoy. ]"
+  interests_values: "[I'm always interested in learning, reading tech TLDR's, tinkering with devices and systems, finding out what makes things tic.]"
 
 # Career Aspirations
 career_aspirations:
-  preferred_roles: "[YOUR PREFERRED ROLE(S)]"
-  ideal_environment: "[DESCRIBE THE WORK ENVIRONMENT YOU ARE LOOKING FOR]"
-  ideal_job: "[DESCRIBE YOUR IDEAL JOB DESCRIPTION]"
-  ideal_team: "[DESCRIBE THE KIND OF TEAM YOU WANT TO WORK WITH]"
-  future_goals: "[DESCRIBE YOUR FUTURE CAREER GOALS]"
+  preferred_roles: "[Cyber Security Analyst, I.T. Helpdesk]"
+  ideal_environment: "[Hybrid/Remote]"
+  ideal_job: "[Security SOC Analyst]"
+  ideal_team: "[My ideal team would be like minded people, passionate about not only what they do but why they do it."
+  future_goals: "[I hope I can make a positive impact doing what I enjoy.]"
 
 # Contact Information
 contact_info:
