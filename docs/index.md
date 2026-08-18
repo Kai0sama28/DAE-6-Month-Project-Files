@@ -4,41 +4,37 @@ title: Home
 ---
 
 <div class="dae-brand">
-  <img src="{{ '/assets/images/dae_logo_color.jpeg' | relative_url }}" alt="dae logo">
+  <img src="{{ site.branding.logo | relative_url }}" alt="{{ site.branding.logo_alt }}">
 </div>
 
 <nav class="portfolio-nav" aria-label="Portfolio navigation">
-  <a href="{{ '/' | relative_url }}">Home</a>
-  <span aria-hidden="true"> · </span>
-  <a href="{{ '/about.html' | relative_url }}">About</a>
-  <span aria-hidden="true"> · </span>
-  <a href="{{ '/projects.html' | relative_url }}">Projects</a>
-  <span aria-hidden="true"> · </span>
-  <a href="{{ '/contact.html' | relative_url }}">Contact</a>
+  {% for link in site.navigation %}
+  <a href="{{ link.url | relative_url }}">{{ link.title }}</a>
+  {% unless forloop.last %}<span aria-hidden="true"> · </span>{% endunless %}
+  {% endfor %}
 </nav>
 
+# {{ site.personal_details.full_name }}
 
-# [YOUR FULL NAME]
+**Graduation:** {{ site.personal_details.graduation_date }}
 
-**Graduation:** [YOUR GRADUATION DATE]
-
-![Professional headshot placeholder]({{ '/assets/images/profile-placeholder.svg' | relative_url }})
+![Professional headshot]({{ site.personal_details.profile_photo | relative_url }})
 
 ## About Me
 
-[Write a short personal introduction here. Include your interests, values, and aspirations. Do not leave this placeholder in the final portfolio.]
+{{ site.about_me.bio_summary }}
 
 ## Career Aspirations
 
-**Preferred role(s):** [YOUR PREFERRED ROLE(S)]
+**Preferred role(s):** {{ site.career_aspirations.preferred_roles }}
 
-**Ideal work environment:** [DESCRIBE THE WORK ENVIRONMENT YOU ARE LOOKING FOR]
+**Ideal work environment:** {{ site.career_aspirations.ideal_environment }}
 
-**Ideal job:** [DESCRIBE YOUR IDEAL JOB]
+**Ideal job:** {{ site.career_aspirations.ideal_job }}
 
-**Ideal team:** [DESCRIBE THE KIND OF TEAM YOU WANT TO WORK WITH]
+**Ideal team:** {{ site.career_aspirations.ideal_team }}
 
-**Future goals:** [DESCRIBE YOUR FUTURE CAREER GOALS]
+**Future goals:** {{ site.career_aspirations.future_goals }}
 
 ## Featured Projects
 
@@ -58,16 +54,8 @@ title: Home
 
 [Project repository or live demo](#)
 
-### [PROJECT 3 NAME]
-
-![Project 3 image placeholder]({{ '/assets/images/project-placeholder.svg' | relative_url }})
-
-[PROJECT 3 DESCRIPTION]
-
-[Project repository or live demo](#)
-
 ## Contact
 
-- **Email:** [YOUR EMAIL]
-- **LinkedIn:** [YOUR LINKEDIN URL]
-- **GitHub:** [YOUR GITHUB URL]
+- **Email:** {{ site.contact_info.email }}
+- **LinkedIn:** [LinkedIn Profile]({{ site.contact_info.linkedin }})
+- **GitHub:** [GitHub Profile]({{ site.contact_info.github }})

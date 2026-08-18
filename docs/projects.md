@@ -4,17 +4,14 @@ title: Projects
 ---
 
 <div class="dae-brand">
-  <img src="{{ '/assets/images/dae_logo_color.jpeg' | relative_url }}" alt="dae logo">
+  <img src="{{ site.branding.logo | relative_url }}" alt="{{ site.branding.logo_alt }}">
 </div>
 
 <nav class="portfolio-nav" aria-label="Portfolio navigation">
-  <a href="{{ '/' | relative_url }}">Home</a>
-  <span aria-hidden="true"> · </span>
-  <a href="{{ '/about.html' | relative_url }}">About</a>
-  <span aria-hidden="true"> · </span>
-  <a href="{{ '/projects.html' | relative_url }}">Projects</a>
-  <span aria-hidden="true"> · </span>
-  <a href="{{ '/contact.html' | relative_url }}">Contact</a>
+  {% for link in site.navigation %}
+  <a href="{{ link.url | relative_url }}">{{ link.title }}</a>
+  {% unless forloop.last %}<span aria-hidden="true"> · </span>{% endunless %}
+  {% endfor %}
 </nav>
 
 
@@ -22,35 +19,18 @@ title: Projects
 
 Choose **2–3 of your strongest projects** for the finished portfolio.
 
-## [PROJECT 1 NAME]
+{% for project in site.projects %}
+## {{ project.name }}
 
-![Project 1 image placeholder]({{ '/assets/images/project-placeholder.svg' | relative_url }})
+![{{ project.name }} image]({{ project.image | relative_url }})
 
-[PROJECT 1 DESCRIPTION]
+{{ project.description }}
 
-- **Repository:** [PROJECT 1 GITHUB URL]
-- **Live demo:** [PROJECT 1 LIVE URL, IF APPLICABLE]
-- **What I contributed:** [YOUR CONTRIBUTION]
-- **Tools/technologies:** [TOOLS OR TECHNOLOGIES]
+- **Repository:** [{{ project.repo_url }}]({{ project.repo_url }})
+{% if project.demo_url != "" %}
+- **Live demo:** [{{ project.demo_url }}]({{ project.demo_url }})
+{% endif %}
+- **What I contributed:** {{ project.contribution }}
+- **Tools/technologies:** {{ project.tools }}
 
-## [PROJECT 2 NAME]
-
-![Project 2 image placeholder]({{ '/assets/images/project-placeholder.svg' | relative_url }})
-
-[PROJECT 2 DESCRIPTION]
-
-- **Repository:** [PROJECT 2 GITHUB URL]
-- **Live demo:** [PROJECT 2 LIVE URL, IF APPLICABLE]
-- **What I contributed:** [YOUR CONTRIBUTION]
-- **Tools/technologies:** [TOOLS OR TECHNOLOGIES]
-
-## [PROJECT 3 NAME]
-
-![Project 3 image placeholder]({{ '/assets/images/project-placeholder.svg' | relative_url }})
-
-[PROJECT 3 DESCRIPTION]
-
-- **Repository:** [PROJECT 3 GITHUB URL]
-- **Live demo:** [PROJECT 3 LIVE URL, IF APPLICABLE]
-- **What I contributed:** [YOUR CONTRIBUTION]
-- **Tools/technologies:** [TOOLS OR TECHNOLOGIES]
+{% endfor %}

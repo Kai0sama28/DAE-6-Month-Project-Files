@@ -2,3 +2,68 @@ title: "[Kyrell Green] | Portfolio"
 description: "[Aspiring Cyber Security Analyst]"
 theme: jekyll-theme-hacker
 show_downloads: false
+
+# Branding
+branding:
+  logo: "/assets/images/dae_logo_color.jpeg"
+  logo_alt: "dae logo"
+
+# Personal Details
+personal_details:
+  full_name: "[YOUR FULL NAME]"
+  graduation_date: "[YOUR GRADUATION DATE]"
+  profile_photo: "/assets/images/profile-placeholder.svg"
+
+# About Me
+about_me:
+  bio_summary: "[Write a short personal introduction here. Include your interests, values, and aspirations.]"
+  interests_values: "[Expand on your personal interests and core values here.]"
+
+# Career Aspirations
+career_aspirations:
+  preferred_roles: "[YOUR PREFERRED ROLE(S)]"
+  ideal_environment: "[DESCRIBE THE WORK ENVIRONMENT YOU ARE LOOKING FOR]"
+  ideal_job: "[DESCRIBE YOUR IDEAL JOB DESCRIPTION]"
+  ideal_team: "[DESCRIBE THE KIND OF TEAM YOU WANT TO WORK WITH]"
+  future_goals: "[DESCRIBE YOUR FUTURE CAREER GOALS]"
+
+# Contact Information
+contact_info:
+  email: "[YOUR EMAIL]"
+  linkedin: "[YOUR LINKEDIN URL]"
+  github: "[YOUR GITHUB URL]"
+
+# Projects
+projects:
+  - name: "[PROJECT 1 NAME]"
+    image: "/assets/images/project-placeholder.svg"
+    description: "[PROJECT 1 DESCRIPTION]"
+    repo_url: "[PROJECT 1 GITHUB URL]"
+    demo_url: "[PROJECT 1 LIVE URL, IF APPLICABLE]"
+    contribution: "[YOUR CONTRIBUTION]"
+    tools: "[TOOLS OR TECHNOLOGIES]"
+  - name: "[PROJECT 2 NAME]"
+    image: "/assets/images/project-placeholder.svg"
+    description: "[PROJECT 2 DESCRIPTION]"
+    repo_url: "[PROJECT 2 GITHUB URL]"
+    demo_url: "[PROJECT 2 LIVE URL, IF APPLICABLE]"
+    contribution: "[YOUR CONTRIBUTION]"
+    tools: "[TOOLS OR TECHNOLOGIES]"
+  - name: "[PROJECT 3 NAME]"
+    image: "/assets/images/project-placeholder.svg"
+    description: "[PROJECT 3 DESCRIPTION]"
+    repo_url: "[PROJECT 3 GITHUB URL]"
+    demo_url: "[PROJECT 3 LIVE URL, IF APPLICABLE]"
+    contribution: "[YOUR CONTRIBUTION]"
+    tools: "[TOOLS OR TECHNOLOGIES]"
+
+# Navigation Links
+navigation:
+  - title: "Home"
+    url: "/"
+  - title: "About"
+    url: "/about.html"
+  - title: "Projects"
+    url: "/projects.html"
+  - title: "Contact"
+    url: "/contact.html"

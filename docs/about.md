@@ -4,38 +4,35 @@ title: About
 ---
 
 <div class="dae-brand">
-  <img src="{{ '/assets/images/dae_logo_color.jpeg' | relative_url }}" alt="dae logo">
+  <img src="{{ site.branding.logo | relative_url }}" alt="{{ site.branding.logo_alt }}">
 </div>
 
 <nav class="portfolio-nav" aria-label="Portfolio navigation">
-  <a href="{{ '/' | relative_url }}">Home</a>
-  <span aria-hidden="true"> · </span>
-  <a href="{{ '/about.html' | relative_url }}">About</a>
-  <span aria-hidden="true"> · </span>
-  <a href="{{ '/projects.html' | relative_url }}">Projects</a>
-  <span aria-hidden="true"> · </span>
-  <a href="{{ '/contact.html' | relative_url }}">Contact</a>
+  {% for link in site.navigation %}
+  <a href="{{ link.url | relative_url }}">{{ link.title }}</a>
+  {% unless forloop.last %}<span aria-hidden="true"> · </span>{% endunless %}
+  {% endfor %}
 </nav>
 
 
 # About Me
 
-![Professional headshot placeholder]({{ '/assets/images/profile-placeholder.svg' | relative_url }})
+![Professional headshot]({{ site.personal_details.profile_photo | relative_url }})
 
-## [YOUR FULL NAME]
+## {{ site.personal_details.full_name }}
 
-**Graduation:** [YOUR GRADUATION DATE]
+**Graduation:** {{ site.personal_details.graduation_date }}
 
-[Expand your About Me section here. Include your interests, values, background, and aspirations.]
+{{ site.about_me.interests_values }}
 
 ## Career Direction
 
-**Preferred role(s):** [YOUR PREFERRED ROLE(S)]
+**Preferred role(s):** {{ site.career_aspirations.preferred_roles }}
 
-**Work environment:** [YOUR PREFERRED WORK ENVIRONMENT]
+**Work environment:** {{ site.career_aspirations.ideal_environment }}
 
-**Ideal job description:** [YOUR IDEAL JOB DESCRIPTION]
+**Ideal job description:** {{ site.career_aspirations.ideal_job }}
 
-**Team:** [THE KIND OF TEAM YOU WANT TO WORK WITH]
+**Team:** {{ site.career_aspirations.ideal_team }}
 
-**Future goals:** [YOUR FUTURE GOALS]
+**Future goals:** {{ site.career_aspirations.future_goals }}
