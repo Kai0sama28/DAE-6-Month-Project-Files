@@ -57,5 +57,5 @@ title: Home
 ## Contact
 
 - **Email:** {{ site.contact_info.email }}
-- **LinkedIn:** [LinkedIn Profile]({{ site.contact_info.linkedin }})
-- **GitHub:** [GitHub Profile]({{ site.contact_info.github }})
+- **LinkedIn:** [LinkedIn Profile]({{"[www.linkedin.com/in/kai-green-884254303]"}})
+- **GitHub:** [GitHub Profile]({{https://github.com/Kai0sama28/DAE-6-Month-Project-Files}})
