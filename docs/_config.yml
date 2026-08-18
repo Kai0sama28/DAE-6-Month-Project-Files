@@ -12,7 +12,7 @@ branding:
 personal_details:
   full_name: "[Kyrell Green]"
   graduation_date: "[December 2026]"
-  profile_photo: "/docs/assets/images/profile_pic.jpeg"
+  profile_photo: "/assets/images/profile_pic.jpeg"
 
 # About Me
 about_me:
