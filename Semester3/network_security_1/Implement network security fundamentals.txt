@@ -1,0 +1,44 @@
+                    Network Traffic
+                          │
+             ┌────────────┴────────────┐
+             │                         │
+        ┌────▼────┐              ┌─────▼─────┐
+        │ Firewall│              │ IDS / IPS │
+        └────┬────┘              └─────┬─────┘
+             │                         │
+             └──────────┬──────────────┘
+                        ▼
+                 Security Alert
+                     JSON
+                        │
+                        ▼
+              ┌─────────────────┐
+              │ Alert Ingestion │
+              └────────┬────────┘
+                       ▼
+              ┌─────────────────┐
+              │ Supervisor Agent│
+              │   LangGraph     │
+              └────────┬────────┘
+                       │
+          ┌────────────┼────────────┐
+          ▼            ▼            ▼
+      Identity       SIEM         EDR
+       Context      History     Telemetry
+          │            │            │
+          └────────────┼────────────┘
+                       ▼
+              Correlation & Timeline
+                       │
+                       ▼
+                MITRE ATT&CK Map
+                       │
+                       ▼
+                Analyst Report
+                       │
+                       ▼
+                Human Approval
+
+This is consistent with the project's architecture, 
+which gathers evidence from identity/access, historical activity, 
+and endpoint evidence, correlates it into a timeline, and leaves the final decision to the analyst.
