@@ -3,7 +3,24 @@
 
 @import "{{ site.theme }}";
 
-/* Portfolio-specific additions only. The official theme provides the visual design. */
+/* Portfolio-specific additions only. The official theme provides the base visual design. */
+
+/* ---- Layout polish ---- */
+.page-content, .wrapper, body {
+  max-width: 860px;
+}
+
+h1, h2, h3 {
+  letter-spacing: .02em;
+}
+
+h2 {
+  margin-top: 2.5rem;
+  padding-top: .5rem;
+  border-top: 1px solid rgba(0, 200, 120, 0.25);
+}
+
+/* ---- Brand logo ---- */
 .dae-brand {
   margin: 0 0 1.25rem;
 }
@@ -14,21 +31,37 @@
   height: auto;
 }
 
+/* ---- Nav ---- */
 .portfolio-nav {
   margin: 0 0 2rem;
   padding: .75rem 0;
   line-height: 1.8;
+  border-bottom: 1px solid rgba(0, 200, 120, 0.25);
 }
 
 .portfolio-nav a {
   white-space: nowrap;
+  text-decoration: none;
 }
 
+.portfolio-nav a:hover {
+  text-decoration: underline;
+}
+
+/* ---- Headshot: this is the fix for the oversized photo ----
+   The alt text on index.md/about.md is "Professional headshot", not
+   "Professional headshot placeholder", so that old selector never matched. */
+img[alt="Professional headshot"],
 img[alt="Professional headshot placeholder"] {
   display: block;
-  max-width: 280px;
-  width: 100%;
-  height: auto;
+  width: 160px;
+  height: 160px;
+  max-width: 160px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 200, 120, 0.6);
+  box-shadow: 0 0 18px rgba(0, 200, 120, 0.25);
+  margin: 1rem 0 1.5rem;
 }
 
 img[alt^="Project "] {
@@ -36,6 +69,75 @@ img[alt^="Project "] {
   max-width: 760px;
   width: 100%;
   height: auto;
+  border-radius: 6px;
+}
+
+/* ---- Growth / skills cards on About page ---- */
+.growth-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 1.25rem 0 2rem;
+}
+
+.growth-card {
+  border: 1px solid rgba(0, 200, 120, 0.35);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  background: rgba(0, 200, 120, 0.04);
+}
+
+.growth-card h3 {
+  margin: 0 0 .5rem;
+  font-size: 1.05rem;
+}
+
+.growth-card p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ---- Resume button ---- */
+.btn-resume {
+  display: inline-block;
+  margin: .5rem 0 1.5rem;
+  padding: .6rem 1.25rem;
+  border: 1px solid rgba(0, 200, 120, 0.7);
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: bold;
+  letter-spacing: .03em;
+}
+
+.btn-resume:hover {
+  background: rgba(0, 200, 120, 0.12);
+}
+
+/* ---- QR contact card ---- */
+.qr-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  border: 1px solid rgba(0, 200, 120, 0.35);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  background: rgba(0, 200, 120, 0.04);
+}
+
+.qr-card img {
+  width: 140px;
+  height: 140px;
+  max-width: 140px;
+  background: #fff;
+  padding: 6px;
+  border-radius: 4px;
+}
+
+.qr-card p {
+  margin: 0;
+  max-width: 320px;
 }
 
 @media (max-width: 600px) {
@@ -46,5 +148,17 @@ img[alt^="Project "] {
 
   .portfolio-nav {
     line-height: 2;
+  }
+
+  img[alt="Professional headshot"],
+  img[alt="Professional headshot placeholder"] {
+    width: 130px;
+    height: 130px;
+    max-width: 130px;
+  }
+
+  .qr-card {
+    flex-direction: column;
+    text-align: center;
   }
 }

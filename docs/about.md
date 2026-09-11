@@ -25,6 +25,19 @@ title: About
 
 {{ site.about_me.interests_values }}
 
+<a class="btn-resume" href="{{ site.contact_info.resume | relative_url }}" target="_blank" rel="noopener">Download Resume (PDF)</a>
+
+## Cybersecurity Growth
+
+<div class="growth-grid">
+{% for item in site.growth_highlights %}
+  <div class="growth-card">
+    <h3>{{ item.title }}</h3>
+    <p>{{ item.detail }}</p>
+  </div>
+{% endfor %}
+</div>
+
 ## Career Direction
 
 **Preferred role(s):** {{ site.career_aspirations.preferred_roles }}

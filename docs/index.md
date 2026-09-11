@@ -20,6 +20,8 @@ title: Home
 
 ![Professional headshot]({{ site.personal_details.profile_photo | relative_url }})
 
+<a class="btn-resume" href="{{ site.contact_info.resume | relative_url }}" target="_blank" rel="noopener">Download Resume (PDF)</a>
+
 ## About Me
 
 {{ site.about_me.bio_summary }}

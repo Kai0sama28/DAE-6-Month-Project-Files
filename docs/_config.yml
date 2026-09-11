@@ -1,5 +1,5 @@
-title: "[Kyrell Green] | Portfolio"
-description: "[Aspiring Cyber Security Analyst]"
+title: "Kyrell Green | Portfolio"
+description: "Aspiring Cybersecurity Analyst | SOC & Network Security"
 theme: jekyll-theme-hacker
 show_downloads: false
 
@@ -10,30 +10,43 @@ branding:
 
 # Personal Details
 personal_details:
-  full_name: "[Kyrell Green]"
-  graduation_date: "[December 2026]"
+  full_name: "Kyrell Green"
+  graduation_date: "December 2026"
   profile_photo: "/assets/images/profile_pic.jpeg"
 
 # About Me
 about_me:
-  bio_summary: "[My name is Kyrell Green. Im interested in getting into the tech industry after shifting careers. I aquired technological skills through hobbies, research trial and error.
-                  aspire to complete the DAE 6 month program, get certified and step forward into a career that I actually enjoy. ]"
-  interests_values: "[I'm always interested in learning, reading tech TLDR's, tinkering with devices and systems, finding out what makes things tic.]"
+  bio_summary: "My name is Kyrell Green. I'm shifting careers into tech after building technical skills through hobbies, hands-on research, and a lot of trial and error. I'm completing the DAE 6-month cybersecurity program, working toward certification, and stepping into a career I actually enjoy."
+  interests_values: "I'm always learning — reading tech TL;DRs, tinkering with devices and systems, and figuring out what makes things tick."
 
 # Career Aspirations
 career_aspirations:
-  preferred_roles: "[Cyber Security Analyst, I.T. Helpdesk]"
-  ideal_environment: "[Hybrid/Remote]"
-  ideal_job: "[Security SOC Analyst]"
-  ideal_team: "[My ideal team would be like minded people, passionate about not only what they do but why they do it."
-  future_goals: "[I hope I can make a positive impact doing what I enjoy.]"
+  preferred_roles: "Cyber Security Analyst, IT Helpdesk"
+  ideal_environment: "Hybrid/Remote"
+  ideal_job: "Security SOC Analyst"
+  ideal_team: "Like-minded people who are passionate about not just what they do, but why they do it."
+  future_goals: "I hope to make a positive impact doing work I genuinely enjoy."
+
+# Cybersecurity growth highlights (used on the About page)
+growth_highlights:
+  - title: "SOC & SIEM/XDR"
+    detail: "Deploying and validating a Wazuh SIEM/XDR lab for endpoint telemetry, alert triage, and incident response — and layering an AI-agentic workflow on top for alert classification and escalation."
+  - title: "Network Security"
+    detail: "Designing a routed, two-subnet lab with pfSense firewalling, ACLs, and segmentation, and mapping traffic against the OSI/TCP-IP models to reason about trust boundaries."
+  - title: "Threat, Vulnerability & Risk"
+    detail: "Running Nmap-based asset discovery and vulnerability assessments, analyzing malware and phishing samples, mapping findings to MITRE ATT&CK, and documenting risk and incident-response steps."
 
 # Contact Information
 contact_info:
-  email: "[Rellg66@gmail.com]"
+  email: "Rellg66@gmail.com"
   linkedin: "https://www.linkedin.com/in/kai-green-884254303"
   github: "https://github.com/Kai0sama28/DAE-6-Month-Project-Files"
-  resume: "/assets/files/Kyrell_Green_Resume.pdf"
+  resume: "/assets/images/Kai_Green_Security_Analyst_Resume.pdf"
+
+qr_code:
+  image: "/assets/images/qr-code.png"
+  caption: "Scan to save my contact info"
+
 # Projects
 projects:
   - name: "[PROJECT 1 NAME]"
