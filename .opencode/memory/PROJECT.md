@@ -8,11 +8,11 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Phase: ai-agentic-soc weeks 1–4 complete (2026-09-10).**
+**Phase: ai-agentic-soc weeks 1–4 complete and committed (2026-09-14).**
 
 The AI-Agentic SOC Triage & Investigation Engine has a working foundation in the Desktop copy
-of the repo. All 20 tests pass. Neither the phase-1 code nor this memory has been committed yet
-(pending user decision).
+of the repo. All 20 tests pass. The weeks 1–4 code is committed to the portfolio repo (working
+tree clean). Duplicate repo at `/Users/Adult/ai-agentic-soc` still not deleted.
 
 What exists today:
 - `ai-agentic-soc/docs/ARCHITECTURE.md` — design update adopting **real Wazuh 4.14.7** as the
@@ -36,10 +36,8 @@ What exists today:
 **Next steps**
 1. Put Wazuh API credentials in `ai-agentic-soc/.env` (from `screenshots/wazuh password.png`)
    and run `scripts/test_wazuh_connection.py` against the live instance.
-2. Decide whether to commit the weeks 1–4 code (and delete the duplicate repo at
-   `/Users/Adult/ai-agentic-soc`).
-3. Weeks 5–7: LangGraph supervisor agent + tool-calling to the three pillars + correlation
-   and MITRE timeline logic.
+2. Weeks 5–7: LangGraph supervisor agent + tool-calling to the three pillars + correlation
+   and MITRE timeline logic. Board week 5 (LangGraph) starts 2026-09-14.
 
 ## Environment (this Mac)
 
@@ -67,6 +65,9 @@ What exists today:
 
 ## Change log
 
+- **2026-09-14** — Weeks 1–4 code committed to portfolio repo (working tree clean); journal
+  updated to reflect the committed state. Duplicate repo at `/Users/Adult/ai-agentic-soc` still
+  to be deleted.
 - **2026-09-10** — Added memory system (AGENTS.md + this journal + project opencode.json),
   project-scoped so other projects can have their own memories.
 - **2026-09-10** — Weeks 1–4 foundation built + 20 tests passing; Wazuh design change adopted in
