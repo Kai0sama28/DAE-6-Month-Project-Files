@@ -8,15 +8,24 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest: IR methodology rubric deliverable completed 2026-09-15 (this Windows/WSL box);
-ready to commit + push with the rest of the semester work.**
+**Latest: SIEM Implementation rubric deliverable drafted 2026-09-16 — new file
+`cyber_threats_and_vulnerabilities_1/SIEM_Implementation.md` — ready for the student to verify
+ossec.conf notification settings + screenshot captions before commit/push.**
 
-New file: `cyber_threats_and_vulnerabilities_1/Incident_Response_Methodology.md` — a full
-documentation deliverable for the "Document Incident Response Methodology" rubric. It uses the
-SSH brute-force (Wazuh rule 100010 / MITRE T1110) scenario and TheHive as the case management
-system. Sections map 1:1 to rubric lines (initial-response runbook, TheHive components,
-escalation D1–D5 + comms, completed IR template, IR principles). Complements the existing
-`Incident_Response_Plan.md`.
+New file: `SIEM_Implementation.md` — deliverables for the "Document SIEM Implementation" rubric.
+Sections map 1:1 to rubric lines: §1 Wazuh 4.14.7 architecture (agents, manager, indexer,
+dashboard, API, decoders, ruleset) + Mermaid data-flow diagram; §2 correlation rule `100010`
+(6 failed logins/120s anchored on rule 5716, MITRE T1110) documented element-by-element with a
+worked firing timeline; §3 three log sources (auth.log, Wazuh FIM, Suricata IDS) with
+significance; §4 notification config (`ossec.conf` email alerts + level-7 threshold + TheHive/API
+consumers); §5 screenshot captions + recommended capture list. Companion to
+`SOC_Operations.md`, `Incident_Response_Plan.md`, `Incident_Response_Methodology.md`, and
+`Firewall_IDS_IPS_Implementation_Report.md`. NOTE: §4 smtp/level values + screenshot captions are
+best-effort — student must verify against the live Wazuh manager.
+
+**SOC module deliverables drafted so far (all 2026-09-16, all need student verification of
+screenshots/config):** `SOC_Operations.md` + `SIEM_Implementation.md` in
+`cyber_threats_and_vulnerabilities_1/`.
 
 **Capstone (unchanged from 09-14): ai-agentic-soc weeks 1–4 committed, working tree clean on the
 Mac. Next capstone step: weeks 5–7 LangGraph supervisor.**
@@ -81,6 +90,15 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-09-16** — Drafted `cyber_threats_and_vulnerabilities_1/SIEM_Implementation.md` for the
+  SIEM Implementation rubric (Wazuh 4.14.7 architecture + Mermaid data flow, correlation rule
+  100010 documented element-by-element, 3 log sources, ossec.conf notification config, screenshot
+  captions). Student to verify smtp/level values + screenshots against the live manager. Journal
+  updated; also removed a duplicated Capstone line left over from the previous edit.
+- **2026-09-16** — Drafted `cyber_threats_and_vulnerabilities_1/SOC_Operations.md` for the SOC
+  Operations rubric (SOC tools, Mermaid alert-handling + escalation workflows, shift
+  transition/handover, incident-handling steps, screenshot captions). Screenshot captions are
+  best-effort — student to verify against live consoles. Journal updated.
 - **2026-09-15** — Completed `cyber_threats_and_vulnerabilities_1/Incident_Response_Methodology.md`
   for the IR methodology rubric (SSH brute-force/T1110 scenario + TheHive case management).
   Journal updated on the Windows/WSL box; remembered the Mac venv can't run here and flagged the
