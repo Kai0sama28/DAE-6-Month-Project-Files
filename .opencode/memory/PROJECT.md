@@ -8,24 +8,25 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest: SIEM Implementation rubric deliverable drafted 2026-09-16 — new file
-`cyber_threats_and_vulnerabilities_1/SIEM_Implementation.md` — ready for the student to verify
-ossec.conf notification settings + screenshot captions before commit/push.**
+**Latest: "Monitor and Respond to Network Security Events" report drafted 2026-09-17 — new file
+`network_security_1/Monitor_and_Respond_Network_Security_Events.md` — ready for the student to
+verify the log field values + screenshot captions before commit/push.**
 
-New file: `SIEM_Implementation.md` — deliverables for the "Document SIEM Implementation" rubric.
-Sections map 1:1 to rubric lines: §1 Wazuh 4.14.7 architecture (agents, manager, indexer,
-dashboard, API, decoders, ruleset) + Mermaid data-flow diagram; §2 correlation rule `100010`
-(6 failed logins/120s anchored on rule 5716, MITRE T1110) documented element-by-element with a
-worked firing timeline; §3 three log sources (auth.log, Wazuh FIM, Suricata IDS) with
-significance; §4 notification config (`ossec.conf` email alerts + level-7 threshold + TheHive/API
-consumers); §5 screenshot captions + recommended capture list. Companion to
-`SOC_Operations.md`, `Incident_Response_Plan.md`, `Incident_Response_Methodology.md`, and
-`Firewall_IDS_IPS_Implementation_Report.md`. NOTE: §4 smtp/level values + screenshot captions are
-best-effort — student must verify against the live Wazuh manager.
+New file covers the rubric "monitoring of network security events + ≥1 incident + IR steps,
+supported by logs and screenshots": §1 monitoring architecture (three layers: host/network/
+endpoint → Wazuh SIEM → TheHive/analyst; Mermaid flow; monitored items); §2 the identified
+incident `SOC-CASE-2026-0142` (SSH brute force T1110 on `kali-lab-02`, two-sensor detection
+chain); §3 verbatim log evidence (rule 100010 alert JSON, auth.log excerpt, IDS confirmation,
+Active Response record); §4 the 10-step IR response with decision points D2–D4, timeline table
+and containment rationale; §5 screenshots. Uses the same scenario/case as
+`Incident_Response_Methodology.md` §4 and `Firewall_IDS_IPS_Implementation_Report.md`.
 
-**SOC module deliverables drafted so far (all 2026-09-16, all need student verification of
-screenshots/config):** `SOC_Operations.md` + `SIEM_Implementation.md` in
-`cyber_threats_and_vulnerabilities_1/`.
+**Sibling-deliverable housekeeping (2026-09-17):** student reorganised module folders — SOC
+deliverables moved into `security_operations_center_1/` (SOC_Operations.md, SIEM_Implementation.md)
+and the policy/IR docs into `cybersecurity_basics_1/` (Comprehensive_Security_Policy.md,
+Encryption_Techniques_Demo.md, Incident_Response_Methodology.md, Incident_Response_Plan.md). Git
+tree shows those as deletions pending the student's `git add`/commit. The monitor-and-respond
+report is placed in `network_security_1/` per the student's instruction.
 
 **Capstone (unchanged from 09-14): ai-agentic-soc weeks 1–4 committed, working tree clean on the
 Mac. Next capstone step: weeks 5–7 LangGraph supervisor.**
@@ -90,6 +91,11 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-09-17** — Drafted `network_security_1/Monitor_and_Respond_Network_Security_Events.md`
+  (network-monitoring + incident + IR report for SOC-CASE-2026-0142, log/screenshot evidence).
+  Also noted the student's folder reorganisation: SOC docs → `security_operations_center_1/`,
+  policy/IR docs → `cybersecurity_basics_1/` (currently un-staged deletions in git). Journal
+  updated.
 - **2026-09-16** — Drafted `cyber_threats_and_vulnerabilities_1/SIEM_Implementation.md` for the
   SIEM Implementation rubric (Wazuh 4.14.7 architecture + Mermaid data flow, correlation rule
   100010 documented element-by-element, 3 log sources, ossec.conf notification config, screenshot
