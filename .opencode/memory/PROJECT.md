@@ -8,25 +8,35 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest: "Monitor and Respond to Network Security Events" report drafted 2026-09-17 — new file
-`network_security_1/Monitor_and_Respond_Network_Security_Events.md` — ready for the student to
-verify the log field values + screenshot captions before commit/push.**
+**Latest: 3 network_security_1 deliverables drafted 2026-09-17 — Topology report, Protocols &
+Architectures report, and Network Security Tools report — closing the two "partial" rubric gaps
+(§1 Topologies, §2 Protocols & Architectures) and the missing §6 Security Tools.**
 
-New file covers the rubric "monitoring of network security events + ≥1 incident + IR steps,
-supported by logs and screenshots": §1 monitoring architecture (three layers: host/network/
-endpoint → Wazuh SIEM → TheHive/analyst; Mermaid flow; monitored items); §2 the identified
-incident `SOC-CASE-2026-0142` (SSH brute force T1110 on `kali-lab-02`, two-sensor detection
-chain); §3 verbatim log evidence (rule 100010 alert JSON, auth.log excerpt, IDS confirmation,
-Active Response record); §4 the 10-step IR response with decision points D2–D4, timeline table
-and containment rationale; §5 screenshots. Uses the same scenario/case as
-`Incident_Response_Methodology.md` §4 and `Firewall_IDS_IPS_Implementation_Report.md`.
+New files in `network_security_1/`:
+- `Network_Topology_Implementation_Report.md` — LAN (star) topology chosen/justified; Mermaid
+  logical diagram + inventory; how the LAN supports secure communication (firewall/edge scoping,
+  TLS agent channel) and network management (fleet view, central logging, diagnostics).
+- `Network_Protocols_and_Architectures_Report.md` — OSI + TCP/IP model for one device
+  (`ubuntu-endpoint-01`); subnetting worksheet for `10.11.0.0/22` with allocation table; secure
+  architecture protocol matrix (SSH key-only, TLS, HTTPS, ufw scoping, rule 100010).
+- `Network_Security_Tools_Report.md` — Wireshark capture + analysis (SSH brute-force replay),
+  Nmap 7.94 NSE vuln scan against `10.11.3.185`, Hydra SSH brute-force pentest output tied to
+  SOC-CASE-2026-0142.
+
+These use the same lab facts as the existing reports (10.11.0.0/22, kali-lab-02, ubuntu-endpoint-01,
+rule 100010, 203.0.113.77). **Student must verify/capture real screenshots** (Wireshark protocol
+hierarchy, Nmap output, Hydra output) and confirm the Hydra `labtester` test-account run actually
+happened before submission.
+
+**Rubric completeness for network_security_1 (7 line items):** §3 Firewall/IDS/IPS ✓ (2 PDFs),
+§4 Access Control ✓, §5 Wireless ✓, §7 Monitor & Respond ✓ + now §1 Topologies ✓, §2 Protocols &
+Architectures ✓, §6 Security Tools ✓ — all seven criteria now have deliverables.
 
 **Sibling-deliverable housekeeping (2026-09-17):** student reorganised module folders — SOC
 deliverables moved into `security_operations_center_1/` (SOC_Operations.md, SIEM_Implementation.md)
 and the policy/IR docs into `cybersecurity_basics_1/` (Comprehensive_Security_Policy.md,
 Encryption_Techniques_Demo.md, Incident_Response_Methodology.md, Incident_Response_Plan.md). Git
-tree shows those as deletions pending the student's `git add`/commit. The monitor-and-respond
-report is placed in `network_security_1/` per the student's instruction.
+tree shows those as deletions pending the student's `git add`/commit.
 
 **Capstone (unchanged from 09-14): ai-agentic-soc weeks 1–4 committed, working tree clean on the
 Mac. Next capstone step: weeks 5–7 LangGraph supervisor.**
@@ -91,6 +101,13 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-09-17** — Drafted 3 more `network_security_1/` deliverables: `Network_Topology_
+  Implementation_Report.md` (LAN/star topology, secure-communication + management rationale),
+  `Network_Protocols_and_Architectures_Report.md` (OSI/TCP-IP for ubuntu-endpoint-01, 10.11.0.0/22
+  subnetting worksheet + allocation, secure-architecture protocol matrix), and `Network_Security_
+  Tools_Report.md` (Wireshark SSH-replay capture + analysis, Nmap 7.94 NSE vuln scan of 10.11.3.185,
+  Hydra brute-force output tied to SOC-CASE-2026-0142). All 7 network_security_1 rubric items now
+  have deliverables. Screenshots + the Hydra run need student verification. Journal updated.
 - **2026-09-17** — Drafted `network_security_1/Monitor_and_Respond_Network_Security_Events.md`
   (network-monitoring + incident + IR report for SOC-CASE-2026-0142, log/screenshot evidence).
   Also noted the student's folder reorganisation: SOC docs → `security_operations_center_1/`,
