@@ -1,37 +1,44 @@
 # Windows Wazuh Agent Deployment — Status / Handoff
 
-**Date:** 2026-09-19
+**Date:** 2026-09-23 (updated — previously 2026-09-19)
 **Agent target:** This Windows host ("Kai")
 **Manager:** Wazuh 4.14.7 (single-node Docker on the Mac), API :55000, dashboard :443
 **Existing agent:** Kali VM (UTM) on the Mac's 10.11.0.0/22 network, already enrolled.
 
-## Status: BLOCKED ON NETWORK
+## Status: RESOLVED — agent enrolled and online ✅
 
-- Installer staged: `C:\Users\Kai\Downloads\wazuh-agent-4.14.7-1.msi`
-  (5.9 MB, verified download from `https://packages.wazuh.com/4.x/windows/wazuh-agent-4.14.7-1.msi`, ETag `25e7f21e4d076221f54e9e877e0b5787`)
-- Manager IP to use: `10.11.3.185`
-- Ports required: TCP 1514 (events), TCP 1515 (agent enrollment)
-- **Port check failed from this host:** 1514 UNREACHABLE, 1515 UNREACHABLE; ping to
-  10.11.3.185 from this host -> "Packet filtered" via NAT gateway (67.83.230.160) on
-  172.31.96.0/20. The Windows host and the Mac have no routable path (different networks).
+- Installed: `C:\Program Files (x86)\ossec-agent` (wazuh-agent.exe v4.14.7).
+- **Enrolled as `007 DESKTOP-VCKJCPV`** (2026-09-23). `client.keys` populated; connected to
+  manager on TCP 1514; service `WazuhSvc` running. Manager pushed shared config and the agent
+  reloaded/reconnected cleanly.
+- Network path to `10.11.3.185` confirmed good (ping + TCP 1514/1515 OPEN).
 
-## Install command (once network is fixed)
+### What was wrong and the fix
+
+- `ossec.conf` still had the placeholder `<address>0.0.0.0</address>` — the MSI reconfiguration
+  never applied `WAZUH_MANAGER` (MSI failures: 1602/1603/1625, and 1316 "specified account
+  already exists"). Agent started then exited with `(4112) Invalid server address` /
+  `(1215) No client configured`.
+- **Fix:** edited `<address>` to `10.11.3.185` directly (original backed up as
+  `ossec.conf.bak`), then started `WazuhSvc`. Enrollment succeeded without a registration
+  password (manager currently allows passwordless enrollment).
+
+## Notes for later
+
+- If you want a custom agent name/group, re-enroll via `WAZUH_AGENT_NAME=` /
+  `WAZUH_AGENT_GROUP=` (or set in the `<enrollment>` block and restart the service).
+- Optional hardening once enrolled: set the agent group, enable syscheck/fim modules as
+  needed for the triage engine.
+
+## Original install command (network now works; direct config edit used instead)
 
 ```
 msiexec /i "C:\Users\Kai\Downloads\wazuh-agent-4.14.7-1.msi" WAZUH_MANAGER="10.11.3.185" /quiet
 ```
 
-Agent name defaults to the Windows hostname; optional `WAZUH_AGENT_NAME=` and
-`WAZUH_AGENT_GROUP=` can be appended.
+## Recommended verification next steps
 
-## Recommended next steps
-
-1. When on the same network as the Mac (or over VPN/port-forward):
-   - Re-test: `nc -vz 10.11.3.185 1514` and `nc -vz 10.11.3.185 1515`
-   - Run the msiexec command above (run as admin)
-   - Back on the server/UTM side, make sure the manager's agent registration
-     (port 1515) is enabled and a group exists if you plan to use custom groups.
-2. Verify enrollment in the Wazuh dashboard under **Agents** (or via
-   `scripts/test_wazuh_connection.py` + the Wazuh API `/agents` endpoint).
-3. Optional hardening once enrolled: set the agent group, enable syscheck/fim
-   modules as needed for the triage engine.
+1. Confirm in the Wazuh dashboard under **Agents** (agent 007, DESKTOP-VCKJCPV,
+   status Active/Connected), and/or via the Wazuh API `/agents` (e.g.
+   `scripts/test_wazuh_connection.py` from the project venv on the Mac).
+2. Optionally add the agent to a group and enable syscheck/fim tuning for the triage engine.

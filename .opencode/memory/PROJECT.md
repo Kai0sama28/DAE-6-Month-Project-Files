@@ -8,6 +8,17 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
+**Latest: Windows host "DESKTOP-VCKJCPV" Wazuh agent enrolled + online 2026-09-23 — resolves
+the BLOCKED-ON-NETWORK status in `ai-agentic-soc/docs/AGENT_DEPLOYMENT_STATUS.md`.**
+- Network path to manager `10.11.3.185` now works (ping OK, TCP 1514/1515 OPEN).
+- Root cause of service crash was `ossec.conf` `<address>0.0.0.0</address>` (MSI reconfig kept
+  failing: 1602/1603/1625/1316). Fixed by editing the address to `10.11.3.185` directly
+  (backup saved as `ossec.conf.bak`), started `WazuhSvc`.
+- Enrolled as **agent id 007 `DESKTOP-VCKJCPV`** (`client.keys` populated, no registration
+  password required — manager accepts passwordless enrollment), connected on 1514/tcp,
+  manager pushed shared config, agent now running (pid 8172).
+- Note for later: Mac manager has passwordless enrollment enabled.
+
 **Latest: 3 network_security_1 deliverables drafted 2026-09-17 — Topology report, Protocols &
 Architectures report, and Network Security Tools report — closing the two "partial" rubric gaps
 (§1 Topologies, §2 Protocols & Architectures) and the missing §6 Security Tools.**
@@ -101,6 +112,11 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-09-23** — Enrolled the Windows host (`DESKTOP-VCKJCPV`) as Wazuh agent 007, connected
+  to manager `10.11.3.185` (ports 1514/1515 now reachable). Fix: `ossec.conf` address
+  `0.0.0.0` -> `10.11.3.185` (direct edit, `.bak` kept), MSI reconfig path was broken
+  (1602/1603/1625/1316). Enrollment succeeded passwordless; service running. `AGENT_DEPLOYMENT_STATUS.md`
+  updated BLOCKED->RESOLVED. Journal updated.
 - **2026-09-17** — Drafted 3 more `network_security_1/` deliverables: `Network_Topology_
   Implementation_Report.md` (LAN/star topology, secure-communication + management rationale),
   `Network_Protocols_and_Architectures_Report.md` (OSI/TCP-IP for ubuntu-endpoint-01, 10.11.0.0/22
