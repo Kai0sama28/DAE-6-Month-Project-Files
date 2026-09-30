@@ -8,6 +8,29 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
+**Latest: SOC lab stage-2 stack live on Docker (2026-09-30) — TheHive + Suricata/EveBox
+deployed and verified alongside Wazuh.** Capstone screenshots can now come from real consoles:
+- **TheHive 5.2.16** (pinned — 5.3+ needs a license): stack `thehive-cassandra` +
+  `thehive-elasticsearch`(7.17.13) + `thehive` at `soc-lab/thehive/`, UI `http://localhost:9000`,
+  login `admin@thehive.local` / `secret` (service password lives in `soc-lab/thehive/.env`;
+  `secret.conf` holds the play secret). No nginx (Wazuh owns 443) and no MinIO (localfs) to
+  fit the 7.7GiB Docker VM.
+- **Suricata 8.0 + EveBox console**: rules at `soc-lab/suricata/rules/` (53,039 ET Open via
+  suricata-update). Runs **offline pcap replay** (Docker Desktop can't sniff lab traffic; no
+  passwordless sudo for tcpdump). Driver script `soc-lab/suricata/run_ids.sh <capture.pcap>`
+  runs Suricata + reloads the EveBox console at `http://localhost:5636` (plain HTTP, no auth).
+- Smoke-test pcap (scapy SSH brute-force, staged verdict) produced 7 alerts incl. real sig
+  **`ET SCAN Potential SSH Scan`** (sid 2001219, 203.0.113.77 -> 192.168.64.3, sev 2) + stream
+  reassembly overlaps. EveBox `/api/alerts` confirmed 3 alert groups.
+- **Residual:** Wazuh rule 100010 still never fired — brute force from hydra isn't reaching
+  Wazuh (no 5716/100010 in alerts.json despite agent 002 reporting PAM session events, meaning
+  auth.log IS parsed — so sshd likely off / wrong IP on Kali). Student to re-run on Kali and,
+  for a genuine IDS artifact, capture bruteforce with Wireshark and pass through `run_ids.sh`.
+- Docker runtime note: evebox `oneshot` binds loopback by default -> must pass `--host 0.0.0.0`;
+  the `server --input` watcher did NOT ingest eve.json on a bind-mount (oneshot + persistent
+  `--database-filename` is the working pattern). Remember
+  `export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"` for docker on the Mac.
+
 **Latest: Windows host "DESKTOP-VCKJCPV" Wazuh agent enrolled + online 2026-09-23 — resolves
 the BLOCKED-ON-NETWORK status in `ai-agentic-soc/docs/AGENT_DEPLOYMENT_STATUS.md`.**
 - Network path to manager `10.11.3.185` now works (ping OK, TCP 1514/1515 OPEN).
@@ -112,6 +135,11 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-09-30** — Deployed + verified SOC lab stage-2: TheHive 5.2.16 (Cassandra+ES7, :9000,
+  admin@thehive.local/secret) and Suricata 8.0 offline-replay IDS with EveBox console (:5636,
+  HTTP) alongside Wazuh on the 7.7GiB Docker VM (~6.1GiB used). Smoke pcap produced 7 alerts
+  incl. real `ET SCAN Potential SSH Scan`. Wrote `soc-lab/suricata/run_ids.sh`. Journal updated.
+  See soc-lab/README for port/credential summary.
 - **2026-09-23** — Enrolled the Windows host (`DESKTOP-VCKJCPV`) as Wazuh agent 007, connected
   to manager `10.11.3.185` (ports 1514/1515 now reachable). Fix: `ossec.conf` address
   `0.0.0.0` -> `10.11.3.185` (direct edit, `.bak` kept), MSI reconfig path was broken
