@@ -18,7 +18,9 @@ EDR API (mock, Falcon-shaped)   ──►  endpoint process/network telemetry
         └──────────►  Streamlit dashboard (alert queue / reports / reasoning chain)
 ```
 
-Wazuh is the real SIEM **and** the alert source (see `docs/ARCHITECTURE.md`). Identity and
+Wazuh is the real SIEM **and** the alert source. Wazuh 4.x exposes no alerts API route, so
+alerts are read from its indexer (`wazuh-alerts-*`), the same store the dashboard uses;
+the Wazuh API supplies agents, rules and status. See `docs/ARCHITECTURE.md`. Identity and
 EDR are schema-matched mocks, swappable for real Okta/CrowdStrike later.
 
 ## Repository Layout
@@ -26,7 +28,7 @@ EDR are schema-matched mocks, swappable for real Okta/CrowdStrike later.
 | Path | Contents |
 |---|---|
 | `schemas/` | Internal, tool-agnostic Pydantic models (alert, identity, edr, siem) + Wazuh raw models |
-| `siem/` | Wazuh API client (JWT auth) + alert normalizer (Wazuh → internal `Alert`) |
+| `siem/` | Wazuh API client (JWT auth: agents/rules/status) + indexer client (HTTP Basic: alerts, `wazuh-alerts-*`) + alert normalizer (Wazuh → internal `Alert`) |
 | `apis/identity/` | FastAPI mock of an Okta/Azure AD-shaped identity service with synthetic data |
 | `apis/edr/` | FastAPI mock of a CrowdStrike-shaped EDR service with synthetic telemetry |
 | `database/` | SQLAlchemy engine helper (SQLite default, Postgres via `DATABASE_URL`) |

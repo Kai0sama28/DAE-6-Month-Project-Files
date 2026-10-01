@@ -22,10 +22,28 @@ deployed and verified alongside Wazuh.** Capstone screenshots can now come from 
 - Smoke-test pcap (scapy SSH brute-force, staged verdict) produced 7 alerts incl. real sig
   **`ET SCAN Potential SSH Scan`** (sid 2001219, 203.0.113.77 -> 192.168.64.3, sev 2) + stream
   reassembly overlaps. EveBox `/api/alerts` confirmed 3 alert groups.
-- **Residual:** Wazuh rule 100010 still never fired — brute force from hydra isn't reaching
-  Wazuh (no 5716/100010 in alerts.json despite agent 002 reporting PAM session events, meaning
-  auth.log IS parsed — so sshd likely off / wrong IP on Kali). Student to re-run on Kali and,
-  for a genuine IDS artifact, capture bruteforce with Wireshark and pass through `run_ids.sh`.
+- **CORRECTION (2026-10-01): 5763 DID fire on 2026-09-30 — 5 alerts, 18:35:30 -> 18:42:39 UTC**,
+  agent 002 Kali, srcip 192.168.64.3, dstuser labtester (level 10, MITRE T1110, group
+  `authentication_failures`). `labtester` WAS created on Kali (syscollector confirms
+  `labtester shell=/bin/bash`, seen 2026-09-30T18:58Z). Earlier "5763 never fired" note was
+  wrong — it was only true of the earlier all-invalid-user run (5710 x1219, 5712 x25, 5758 x152,
+  5760 x123). Those 5 alerts survive in `alerts/2026/Sep/ossec-alerts-30.json.gz` and as 5 docs
+  in indexer `wazuh-alerts-*`.
+- **Rule chain to remember:** `Failed password for <VALID user>` -> 5700 -> 5716 -> **5760**;
+  8x 5760 in 120s same `srcip` -> **5763** (freq 8, timeframe 120, ignore 60). The invalid-user
+  variant fires 5710 instead and, because 5710 becomes the last matched sid, 5760 can never
+  match — that is why the username MUST exist on the box. 5712 is the invalid-user BF twin.
+- **Wazuh 4.14.7 API here has NO alerts endpoint** — `/security-events` returns 404 (confirmed
+  against openapi.json, 150 paths). `/agents`, `/rules`, `/manager/status`, `/syscollector/*`,
+  `/logtest` all work. Alerts must be pulled from the **indexer** (`https://localhost:9200`,
+  `wazuh-alerts-*`, creds hardcoded in the wazuh-docker compose). `siem/client.py` query_alerts()
+  calls `/security-events` and therefore needs repointing at the indexer before weeks 5-7.
+- soc-lab lives OUTSIDE the workspace at `/Users/Adult/Desktop/soc-lab` (not in the repo, and
+  there is no soc-lab/README — the earlier journal reference to one is stale). Wazuh compose is
+  at `/Users/Adult/Desktop/wazuh/wazuh-docker/single-node`; its `ossec.conf` is bind-mounted from
+  `config/wazuh_cluster/wazuh.manager.conf`, which is the file to edit for persistent config.
+  Suricata has NO Wazuh integration yet (no eve.json localfile, `0475-suricata_rules.xml` present
+  but not enabled) — planned as future work, not done.
 - Docker runtime note: evebox `oneshot` binds loopback by default -> must pass `--host 0.0.0.0`;
   the `server --input` watcher did NOT ingest eve.json on a bind-mount (oneshot + persistent
   `--database-filename` is the working pattern). Remember
@@ -80,7 +98,15 @@ What exists today (capstone):
   SIEM + alert source (supersedes the mock-SIEM design v0.2).
 - `schemas/` — internal Pydantic models (Alert, Identity, EDR, SIEM) + Wazuh raw models.
 - `siem/client.py` — Wazuh REST client (JWT auth via `/security/user/authenticate`, token
-  refresh, `/security-events` + `/agents` queries).
+  refresh, `/agents` + `/rules` + `/manager/status` + `/logtest`). Its `query_alerts()`/
+  `get_alert()` still call the 3.x-only `/security-events` route and 404 on 4.14.7 — docstrings
+  now say so; do not wire new code to them.
+- `siem/indexer_client.py` (NEW 2026-10-01) — the **real** alert source. HTTP Basic client for
+  the OpenSearch indexer (`https://localhost:9200`, `wazuh-alerts-*`, env `WAZUH_INDEXER_URL`/
+  `_USER`/`_PASSWORD`/`_INDEX`). `query_alerts()`/`count_alerts()`/`get_alert()`/`ping()`; same
+  signature as WazuhClient but filters take the dotted-field dict (`{"rule.id": "5763"}`) and
+  translate to DSL, `q=` parses `field=value;field!=value`, returns `WazuhAlert` so
+  `siem/normalizer.py` is untouched. Verified live against the indexer.
 - `siem/normalizer.py` — Wazuh alert → internal `Alert` with MITRE preserved + severity clamped.
 - `apis/identity/` — FastAPI mock (Okta-shaped): users, login history, risk factors,
   login-event injection; auto-seeds synthetic data (SQLite `data/identity.db`).
@@ -90,15 +116,20 @@ What exists today (capstone):
 - `investigation/evidence.py` — gathers identity + EDR + SIEM into an `InvestigationBundle`
   (the seam the LangGraph agent will consume in weeks 5+).
 - `database/engine.py` — SQLAlchemy `InvestigationRecord` store (SQLite default).
-- `tests/` — 20 tests: 4 files (normalizer, wazuh client, identity API, EDR API) + a real
-  end-to-end test that boots both APIs on ephemeral ports and runs the full evidence pipeline.
-- `scripts/test_wazuh_connection.py` — verifies live Wazuh auth/agents/alerts (needs creds).
+- `tests/` — **39 tests**, 5 files (normalizer, wazuh client, indexer client, identity API,
+  EDR API) + a real end-to-end test that boots both APIs on ephemeral ports and runs the full
+  evidence pipeline.
+- `scripts/test_wazuh_connection.py` — verifies API auth + agents, indexer reachability, a live
+  alert sample and the 30-day 5760/5763 count (needs creds; run it with creds exported from the
+  wazuh-docker compose). Verified working 2026-10-01.
 
 **Next steps**
-1. Put Wazuh API credentials in `ai-agentic-soc/.env` (from `screenshots/wazuh password.png`)
-   and run `scripts/test_wazuh_connection.py` against the live instance.
-2. Weeks 5–7: LangGraph supervisor agent + tool-calling to the three pillars + correlation
-   and MITRE timeline logic. Board week 5 (LangGraph) starts 2026-09-14.
+1. Repoint `investigation/evidence.py` at `IndexerClient` (it still pulls alerts via
+   `WazuhClient.query_alerts`, which 404s on 4.x) and re-run the e2e test against the indexer.
+2. Create a read-only indexer user scoped to `wazuh-alerts-*`; populate `ai-agentic-soc/.env`
+   (still missing) with API + indexer credentials.
+3. Weeks 5–7: LangGraph supervisor agent + tool-calling to the three pillars + correlation
+   and MITRE timeline logic. Board week 5 (LangGraph) started 2026-09-14.
 
 ## Environment (note: work also happens on a Windows/WSL box)
 
@@ -135,6 +166,21 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-10-01** — Built `siem/indexer_client.py` + 19 tests (20 -> 39 passing) and verified it
+  live against the indexer; updated `.env.example`, `conftest.py`, README, ARCHITECTURE (both said
+  alerts come from `/security-events`, which is wrong for 4.14.7), and the connection script.
+  Wrote `Semester3/Weekly_Status_Update_2026-10-01.md`. `investigation/evidence.py` still needs
+  repointing at the new client.
+- **2026-10-01** — Investigated the 5763 goal: proved from the rotated alerts + indexer that
+  **5763 already fired 5x on 2026-09-30 18:35-18:42 UTC** (`labtester` exists on Kali), so the
+  09-30 "never fired" note is corrected. Found the Wazuh 4.14.7 API has **no `/security-events`
+  endpoint** (404, verified in openapi.json) -> alerts must be queried from the indexer on :9200;
+  `siem/client.py` needs repointing before weeks 5-7. Also mapped soc-lab's real location
+  (`/Users/Adult/Desktop/soc-lab`) and confirmed Wazuh<->Suricata have **zero** integration today.
+- **2026-09-30** — Reverse-engineered Wazuh sshd rules to trigger 5763: found `labtester`
+  doesn't exist on Kali so every hydra line is "invalid user" -> 5710/5712/5758 fired, 5760/5763
+  never. `wazuh-logtest` confirmed valid-user line fires 5700->5716->5760. Fix = create the
+  user, exclude pass1847 from the wordlist, re-run hydra. Journal updated.
 - **2026-09-30** — Deployed + verified SOC lab stage-2: TheHive 5.2.16 (Cassandra+ES7, :9000,
   admin@thehive.local/secret) and Suricata 8.0 offline-replay IDS with EveBox console (:5636,
   HTTP) alongside Wazuh on the 7.7GiB Docker VM (~6.1GiB used). Smoke pcap produced 7 alerts

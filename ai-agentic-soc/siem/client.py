@@ -18,8 +18,12 @@ class WazuhClient:
     """Minimal client for the Wazuh 4.x REST API.
 
     Handles the JWT auth flow (POST /security/user/authenticate) and exposes
-    the endpoints the investigation engine needs: security-event queries,
-    agent lookups, and alert retrieval.
+    the endpoints the investigation engine needs: agent lookups, rules, manager
+    status and logtest.
+
+    Note: Wazuh 4.x has no ``/security-events`` route (removed after 3.x), so
+    ``query_alerts`` / ``get_alert`` below only work against 3.x managers.
+    Use :class:`siem.indexer_client.IndexerClient` for alerts on 4.x.
     """
 
     def __init__(
@@ -59,6 +63,7 @@ class WazuhClient:
         since: Optional[str] = None,
         until: Optional[str] = None,
     ) -> list[WazuhAlert]:
+        """Deprecated on Wazuh 4.x — use IndexerClient.query_alerts()."""
         params: dict[str, Any] = {"offset": offset, "limit": limit}
         if q:
             params["q"] = q
@@ -72,6 +77,7 @@ class WazuhClient:
         return [WazuhAlert.model_validate(item) for item in data.get("affected_items", [])]
 
     def get_alert(self, alert_id: str) -> Optional[WazuhAlert]:
+        """Deprecated on Wazuh 4.x — use IndexerClient.get_alert()."""
         data = self._get("/security-events", params={"limit": 1, "filters.id": alert_id})
         items = data.get("affected_items", [])
         return WazuhAlert.model_validate(items[0]) if items else None

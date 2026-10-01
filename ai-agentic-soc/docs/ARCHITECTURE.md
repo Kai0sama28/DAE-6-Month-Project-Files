@@ -19,7 +19,7 @@ Splunk-ES-shaped JSON file to live pulls from the Wazuh API.
 
 | Pillar | v0.2 Design (DRAFT) | Adopted Change |
 |---|---|---|
-| Alert ingestion | Static JSON alert modeled on Splunk ES / Sigma output | **Live from Wazuh API** (`GET /security-events`), normalized to the internal schema |
+| Alert ingestion | Static JSON alert modeled on Splunk ES / Sigma output | **Live from the Wazuh indexer** (`POST wazuh-alerts-*/_search`), normalized to the internal schema |
 | SIEM history | Mock FastAPI service or local Splunk Free | **Real Wazuh API** — real correlated alerts, real agents, real MITRE-tagged rules |
 | Identity evidence | Mock FastAPI service (Okta/Azure AD-shaped) | **Unchanged** — remains a schema-matched mock |
 | EDR telemetry | Mock FastAPI service (CrowdStrike Falcon-shaped) | **Unchanged** — remains a schema-matched mock (supplemented by Wazuh syscheck/agent data where available) |
@@ -69,9 +69,9 @@ Splunk-ES-shaped JSON file to live pulls from the Wazuh API.
 
 ```mermaid
 flowchart TD
-    A[Alert received from Wazuh API /security-events] --> B[Triage decision engine - LangGraph supervisor]
+    A[Alert received from the Wazuh indexer wazuh-alerts-*] --> B[Triage decision engine - LangGraph supervisor]
     B --> C1[Identity evidence - mock Okta/Azure AD-shaped API]
-    B --> C2[SIEM history - REAL Wazuh API security-events + agents/syscheck]
+    B --> C2[SIEM history - REAL Wazuh indexer alerts + API agents/syscheck]
     B --> C3[Endpoint evidence - mock CrowdStrike Falcon-shaped API]
     C1 --> D[Incident timeline - correlation + MITRE ATT&CK mapping]
     C2 --> D
@@ -86,13 +86,13 @@ an AI system second. Only the *evidence source wiring* of pillar C2 changed.
 
 ### 3.3 Data flow through the agent
 
-1. Supervisors pulls an active detection from Wazuh (`GET /security-events`).
+1. Supervisors pulls an active detection from the Wazuh indexer (`POST wazuh-alerts-*/_search`).
 2. The Wazuh alert is normalized into the internal, tool-agnostic `Alert` schema
    (`schemas/alert.py`). MITRE mappings embedded in the Wazuh rule are preserved.
 3. The triage decision engine chooses which evidence pillars this alert needs.
-4. Identity and EDR lookups go to the mock services; SIEM history goes back to Wazuh
-   (e.g. `GET /security-events?...` filtered by `src_ip`, `data.dstuser`, `agent.id`,
-   or a time window).
+4. Identity and EDR lookups go to the mock services; SIEM history goes back to the Wazuh
+   indexer (filters on `data.srcip`, `data.dstuser`, `agent.id`, `rule.id`, or a time
+   window), while agent/host state comes from the Wazuh API.
 5. All evidence is correlated into a timeline, mapped to MITRE ATT&CK, summarized in
    natural language, and routed to the analyst approval gate.
 
@@ -103,10 +103,12 @@ an AI system second. Only the *evidence source wiring* of pillar C2 changed.
 | Version | Wazuh 4.14.7 (manager/indexer/dashboard, single-node Docker) |
 | API base URL | `https://localhost:55000` (mapped from container port `55000`) |
 | Auth flow | `POST /security/user/authenticate` (Basic auth) → JWT → `Authorization: Bearer` on all calls |
-| Alert query endpoint | `GET /security-events` (successor of the legacy `/alerts`; filters via `q=`, `filters=`, `offset`/`limit`) |
-| Semantic queries | `GET /agents` (list/enrollment), `GET /agents/{id}/summary`, `GET /syscheck/{id}` (file integrity where used) |
+| Alert query endpoint | **Indexer** `POST https://localhost:9200/wazuh-alerts-*/_search` (HTTP Basic). Wazuh 4.x has **no** `/security-events` route — that was 3.x — so alerts are only reachable from the indexer, which is also what the dashboard reads |
+| Semantic queries | `GET /agents` (list/enrollment), `GET /agents/{id}/summary`, `GET /syscheck/{id}` (file integrity where used), `GET /manager/status`, `POST /logtest` |
+| Indexer base URL | `https://localhost:9200` (OpenSearch 2.x, self-signed TLS) |
+| Indexer auth | HTTP Basic on every call (`WAZUH_INDEXER_USER`, `WAZUH_INDEXER_PASSWORD`); no JWT/refresh |
 | TLS verification | off by default for localhost; controlled by `WAZUH_VERIFY_TLS` |
-| Credentials | environment variables only (`WAZUH_API_USER`, `WAZUH_API_PASSWORD`), never committed |
+| Credentials | environment variables only (`WAZUH_API_USER`, `WAZUH_API_PASSWORD`, `WAZUH_INDEXER_USER`, `WAZUH_INDEXER_PASSWORD`), never committed |
 
 ### 4.1 Normalizer mapping (Wazuh alert → internal `Alert`)
 
