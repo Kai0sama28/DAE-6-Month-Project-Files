@@ -8,6 +8,106 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
+**Latest (2026-10-05, 2nd pass): `cybersecurity_basics_1/Incident_Response_Methodology.md`
+REWRITTEN (987 lines) + new `cybersecurity_basics_1/Incident_Response_Template.md` (253 lines)
+for the Incident Response Methodology rubric.** The 2026-09-15 draft was factually wrong and has
+been replaced. Every claim re-verified live against the indexer/manager/TheHive/EveBox.
+
+**Structure:** §1 incident type + the REAL detection chain (read from the running ruleset) +
+real-vs-noise comparison + the `firedtimes` counting trap · §2 60-minute runbook (3 blocks) with
+**7 decision points D1-D7** + timing targets · §3 TheHive 5.2.16 components (13 rows: what it is
+/ operational purpose / use in this workflow) + **6 verified deployment gaps** · §4 severity
+factor matrix (scored + overridden + capped, with worked arithmetic), 5 tiers, 8 escalation
+triggers incl. SLA over-run, decision map, notification matrix with GDPR clocks, anti-patterns ·
+§5 16 IR principles + NIST lifecycle rationale + agentic-SOC mapping · §6 **completed IR
+template (Sections A-J of the new template) for the real 2026-10-01 compromise** · §7 why the
+documentation requirements exist · §8 every source query + config commands so a reviewer can
+re-derive every number · §9 corrections · §10 doc map · screenshot list still to capture.
+
+**NEW FACT — the attack was SELF-GENERATED.** `data.srcip` on the 2026-10-01 attack is
+`192.168.64.3`, which **is agent 002 `Kali`'s own address** (verified `agent.ip`). So the brute
+force was produced by lab test tooling on the monitored host, not by a remote host. The old
+draft named `203.0.113.77` (RFC 5737 doc range, Suricata pcap-replay only) as the attacker —
+that would have misrepresented the incident as an external breach. This is stated as `A.11a` in
+the doc and must not be quoted as an external attacker IP.
+
+**Post-access window (2026-10-01T17:50:14Z -> 2026-10-05T23:59:59Z, agent 002) = 8 docs, ALL
+benign:** `504` x4 (Wazuh agent disconnected / lab VM shutdowns), `550` x1 (FIM
+`/etc/shadow` modified, **Mode: scheduled**, 2026-10-02 03:54 — attributable to the
+`passwd labtester` credential change, NOT tampering), `5501` x3 (lightdm/systemd greeter,
+2026-10-01 18:00:45). **No `5402` by labtester, no `5715`, no persistence rule.** The 71 ms
+session conclusion stands.
+
+**Severity scored High** (Impact 2 / Scope 1 / Urgency 2 -> base Medium; **override +1** on D3=YES;
+**capped at High** by D5=NO). Template's factor matrix uses the Comprehensive_Security_Policy
+Low/Medium/High vocabulary so the docs agree.
+
+**Previous: `security_operations_center_1/Threat_Detection_Principles.md` written
+(2026-10-05) — and the investigation turned up a genuine COMPROMISE the old docs said never
+happened.** Deliverable (~1,110 lines) covers detection rule mechanisms, 3 distinct detection
+scenarios, 5 threat-indicator families, a 7-phase analysis methodology (NIST SP 800-61 + ATT&CK
++ Diamond Model), and a full worked alert investigation against the live indexer. Every rule
+fragment, level, threshold, timestamp and count was read from the running lab (ruleset files +
+`wazuh-alerts-*`), not from memory.
+
+**MAJOR FINDING — brute force SUCCEEDED on 2026-10-01 at 17:50:09 UTC.** This supersedes every
+earlier "no successful login" note (which was based only on the 2026-09-30 run):
+- **Rule `40112`, level 12, `0280-attack_rules.xml`**: *"Multiple authentication failures followed
+  by a success."* Logic: `if_group=authentication_success` + `if_matched_group=
+  authentication_failures` + `same_source_ip`, `timeframe 240`. MITRE `T1078` + `T1110`.
+  `full_log`: `Accepted password for labtester from 192.168.64.3 port 49024 ssh2`.
+- Preceded by **61 `5760` failures** in 17:48:26→17:50:07, **3 batches x 4 parallel connections**
+  (12 distinct srcports). Proof of the exact point of success: `sshd[2446058]` / port 49024 fails
+  3x (17:50:02, :05, :07) then succeeds on the 4th attempt.
+- `5501` session opened uid 1001 at 17:50:09.931, `5502` closed at 17:50:10.002 = **71 ms**
+  session (automated credential validation, not human use).
+- **No post-access activity** in 5 days: nothing for agent 002 after 17:50:14 except 3 lightdm
+  events at 18:00:45. No commands, no `5402` sudo by labtester, no persistence, no lateral
+  movement. FIM `/etc/shadow` changes (10-01/10-02) are explained by `5402` `passwd labtester`.
+- Password was changed **2m15s before** the attack: rule `5402` at 17:46:11
+  `COMMAND=/usr/bin/passwd labtester` (also 16:22:17 and 17:03:06 the same day).
+- Run 1 (2026-09-30 18:35:30→18:42:39) = same attack **blocked**: 5760 x123, 5763 x5
+  (firedtimes 1,3,6,9,14), 5758 x8, 40111 x2, 5551 x2, **zero successes**. Run 2 had *half* the
+  failure volume and succeeded — no rate/volume metric separates them; only `40112` does.
+
+**Two documentation-vs-reality discrepancies found (flagged to student, not silently patched):**
+1. **Custom rule `100010` does not exist on the manager.** `local_rules.xml` contains only the
+   shipped example `100001`; zero alerts exist for any `1000*` rule id. So
+   `security_operations_center_1/SIEM_Implementation.md` §2 ("sample correlation rule as
+   created") is inaccurate. All real detections came from **stock** Wazuh rules.
+2. **Email notification is OFF.** Live `ossec.conf` has `<email_notification>no</email_notification>`
+   + default `smtp.example.wazuh.com`, and the `<active-response>` block is **commented out**
+   (`grep -c "<active-response>"` = 1 match, but it is the commented example). So
+   `SIEM_Implementation.md` §4.1 (email yes, `email_alert_level 7`) is inaccurate too. Practical
+   consequence: **the indexer is the only working alert-delivery path** — which is why the new
+   investigation is written entirely as indexer queries.
+
+**Real rule chains (verified in the manager's ruleset — memorize these):**
+- sshd branch: `5700`(lvl0,noalert,decoded_as sshd) -> `5710`(lvl5 invalid user)/`5715`(lvl3
+  `^Accepted`, group **authentication_success**)/`5716`(lvl5) -> `5760`(lvl5 `Failed password`,
+  group **authentication_failed**) -> **`5763`**(lvl10 freq8/120s/ignore60/same_source_ip, T1110).
+  Invalid-user twin: `5710` -> **`5712`**(lvl10 freq8/120s/ignore60). `5758`(lvl8 max auth attempts).
+- pam branch: `5500` -> `5503`(lvl5) -> **`5551`**(lvl10 freq8/**180s**/same_source_ip).
+- cross-rule: **`40111`**(lvl10 freq**12**/**160s**, if_matched_group authentication_failed) and
+  **`40112`**(lvl**12**, timeframe 240, if_group authentication_success).
+- flood/anomaly: internal **`rule 11`**, lvl4, group `stats`, fired 3x: 09-18 22:57:44, 09-30
+  16:18:16, **10-01 17:38:44 (10 min BEFORE the attack — unactioned early warning)**.
+- **`ignore="60"` + alert compression** = why `firedtimes` (92 on 10-01) >> indexed alerts (19).
+  Always quote `rule.firedtimes`, not the hit count, when counting attack volume.
+- Windows agent 007 `DESKTOP-VCKJCPV` has 210 alerts on 10-05 (61104 x20, 60110 x4, 60132 x7,
+  23504 CVE-2026-82328 GIMP x7, 510 rootcheck NTFS ADS x3) — usable as host-state detection examples.
+
+**Other detection-layer gaps logged as G1-G8** (see doc §5.8): no notification path; 100010 not
+deployed; `40112` silently depends on `5715`'s group tag; duplicate level-10 rules (5763+40111);
+flood alert unactioned; **password spraying undetectable (all rules are `same_source_ip`)**; no
+live Suricata->Wazuh integration; endpoint visibility is journald-only (no process telemetry, so
+"no post-access activity" is scope-bounded).
+
+**Also still open from before:** Suricata `ET SCAN Potential SSH Scan` sid 2001219 confirmed from
+`soc-lab/suricata/output/eve.json` (2 alerts, 203.0.113.77 -> 192.168.64.3:22, `action: allowed`,
+sev 2). Note the replayed pcap carries synthetic 2002-08-28 timestamps (scapy-generated) — say so
+rather than presenting them as real packet times.
+
 **Latest: SOC lab stage-2 stack live on Docker (2026-09-30) — TheHive + Suricata/EveBox
 deployed and verified alongside Wazuh.** Capstone screenshots can now come from real consoles:
 - **TheHive 5.2.16** (pinned — 5.3+ needs a license): stack `thehive-cassandra` +
@@ -22,13 +122,6 @@ deployed and verified alongside Wazuh.** Capstone screenshots can now come from 
 - Smoke-test pcap (scapy SSH brute-force, staged verdict) produced 7 alerts incl. real sig
   **`ET SCAN Potential SSH Scan`** (sid 2001219, 203.0.113.77 -> 192.168.64.3, sev 2) + stream
   reassembly overlaps. EveBox `/api/alerts` confirmed 3 alert groups.
-- **CORRECTION (2026-10-01): 5763 DID fire on 2026-09-30 — 5 alerts, 18:35:30 -> 18:42:39 UTC**,
-  agent 002 Kali, srcip 192.168.64.3, dstuser labtester (level 10, MITRE T1110, group
-  `authentication_failures`). `labtester` WAS created on Kali (syscollector confirms
-  `labtester shell=/bin/bash`, seen 2026-09-30T18:58Z). Earlier "5763 never fired" note was
-  wrong — it was only true of the earlier all-invalid-user run (5710 x1219, 5712 x25, 5758 x152,
-  5760 x123). Those 5 alerts survive in `alerts/2026/Sep/ossec-alerts-30.json.gz` and as 5 docs
-  in indexer `wazuh-alerts-*`.
 - **Rule chain to remember:** `Failed password for <VALID user>` -> 5700 -> 5716 -> **5760**;
   8x 5760 in 120s same `srcip` -> **5763** (freq 8, timeframe 120, ignore 60). The invalid-user
   variant fires 5710 instead and, because 5710 becomes the last matched sid, 5760 can never
@@ -166,6 +259,29 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-10-05** — Rewrote `cybersecurity_basics_1/Incident_Response_Methodology.md` (357 -> 987
+  lines) for the IR Methodology rubric and added `Incident_Response_Template.md` (253 lines, blank
+  form Sections A-J with per-field guidance). Re-verified every fact live. **The 2026-09-15 draft
+  was wrong:** it documented the attack as *blocked* with *no* successful login (it had only ever
+  looked at the 2026-09-30 run), cited **rule `100010`** (which does not exist — `local_rules.xml`
+  holds only the shipped `100001`, zero `1000*` alerts in the index), cited `/security-events`
+  (404 on Wazuh 4.14.7 — alerts come from the indexer), named `kali-lab-02`/agent 011/10.11.3.57
+  (real: agent `002` `Kali` `192.168.64.3`), said 412 failures (real: **614** `firedtimes`, 61
+  indexed), and named `203.0.113.77` as attacker (real srcip is the agent's **own** IP — a
+  self-generated lab attack). Corrected doc now uses the real stock rules `5763`/`40111`/
+  **`40112`**/`5758`/`5551`/`5760`, 7 decision points D1-D7, and scores severity **High** with
+  the arithmetic shown. §9 lists every false claim and names the **8 sibling files** still
+  carrying the `100010` / `/security-events` errors — left for the student to decide between
+  *deploying* rule 100010 (preferred, closes gap G6) or *correcting* the docs. Journal folder
+  references corrected to the post-reorg paths. Screenshots 1-8 still to be captured.
+- **2026-10-05** — Wrote `security_operations_center_1/Threat_Detection_Principles.md`
+  (Threat Detection Principles rubric: rule mechanisms, 3 detection scenarios, indicator
+  categories, 7-phase methodology, worked alert investigation). Investigation of the live indexer
+  found the brute force **SUCCEEDED** on 10-01 17:50:09 (`40112` level 12, `Accepted password for
+  labtester`, 71 ms session) — the earlier "no successful login" belief was wrong (it came from
+  the 09-30 run only). Also found rule `100010` is NOT deployed and email notification is OFF,
+  both contradicting `SIEM_Implementation.md` §2/§4.1 — flagged in the new doc, **not** silently
+  patched in the old one (student should decide). Journal updated.
 - **2026-10-01** — Built `siem/indexer_client.py` + 19 tests (20 -> 39 passing) and verified it
   live against the indexer; updated `.env.example`, `conftest.py`, README, ARCHITECTURE (both said
   alerts come from `/security-events`, which is wrong for 4.14.7), and the connection script.
@@ -203,16 +319,16 @@ What exists today (capstone):
   Also noted the student's folder reorganisation: SOC docs → `security_operations_center_1/`,
   policy/IR docs → `cybersecurity_basics_1/` (currently un-staged deletions in git). Journal
   updated.
-- **2026-09-16** — Drafted `cyber_threats_and_vulnerabilities_1/SIEM_Implementation.md` for the
+- **2026-09-16** — Drafted `security_operations_center_1/SIEM_Implementation.md` for the
   SIEM Implementation rubric (Wazuh 4.14.7 architecture + Mermaid data flow, correlation rule
   100010 documented element-by-element, 3 log sources, ossec.conf notification config, screenshot
   captions). Student to verify smtp/level values + screenshots against the live manager. Journal
   updated; also removed a duplicated Capstone line left over from the previous edit.
-- **2026-09-16** — Drafted `cyber_threats_and_vulnerabilities_1/SOC_Operations.md` for the SOC
+- **2026-09-16** — Drafted `security_operations_center_1/SOC_Operations.md` for the SOC
   Operations rubric (SOC tools, Mermaid alert-handling + escalation workflows, shift
   transition/handover, incident-handling steps, screenshot captions). Screenshot captions are
   best-effort — student to verify against live consoles. Journal updated.
-- **2026-09-15** — Completed `cyber_threats_and_vulnerabilities_1/Incident_Response_Methodology.md`
+- **2026-09-15** — Completed `cybersecurity_basics_1/Incident_Response_Methodology.md`
   for the IR methodology rubric (SSH brute-force/T1110 scenario + TheHive case management).
   Journal updated on the Windows/WSL box; remembered the Mac venv can't run here and flagged the
   `screenshots/wazuh password.png` gitignore gap before the user's commit/push.
