@@ -398,6 +398,12 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-10-06 (2nd)** — Student reports **fresh Ubuntu installed on UTM**; next step = enroll a
+  Wazuh agent from it. Docker stack verified up: manager publishes **1514-1515 + 55000** on
+  `0.0.0.0`. Reminders for that task: set `<address>` in the agent `ossec.conf` to the host's
+  UTM shared-network IP (usually `192.168.64.1` — verify with `ip route` in the VM; **never
+  `0.0.0.0`** — that's the agent-007 crash cause), manager accepts **passwordless enrollment**,
+  agent version must match **4.14.7**. Journal edit only — not yet committed.
 - **2026-10-06** — New deliverable integrated + committed:
   `security_operations_center_1/Incident Response Documentation_ Case Management, Escalation, and
   Ransomware Report.md` (from Downloads, rewritten 210 → 311 lines). User chose "real case +
