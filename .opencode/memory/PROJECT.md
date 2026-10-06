@@ -8,9 +8,21 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest (2026-10-05, 2nd pass): `cybersecurity_basics_1/Incident_Response_Methodology.md`
-REWRITTEN (987 lines) + new `cybersecurity_basics_1/Incident_Response_Template.md` (253 lines)
-for the Incident Response Methodology rubric.** The 2026-09-15 draft was factually wrong and has
+**Latest (2026-10-06): `security_operations_center_1/Incident Response Documentation_ Case
+Management, Escalation, and Ransomware Report.md` rewritten (311 lines) and added to the repo.**
+Came from Downloads as a fictional "Northwind ransomware" draft; per user decision it now = generic
+Jira/Slack model **kept + new §1.3 lab mapping** (TheHive = record, case timeline = coordination,
+gaps G1/G4 named) · Part 2 generic SEV1-4 **kept + new §2.4** mapping to the scored factor-matrix
+model, D1-D7, and the real achieved timings (declare ≈2 min, D3 <1 min, contain T+20) ·
+**Part 3 fully replaced with the real case `SOC-CASE-2026-0142`** (all rules/timestamps/counts from
+Incident_Response_Methodology.md §6, verified live 10-05) · **§3.13 labelled illustrative ransomware
+annex** (isolate-vs-shutdown, protect backups first, ransom-not-paid decision, comms, lab
+capability table) so the assignment's "Ransomware Report" title stays honest. Not yet rubric-checked
+against the original assignment PDF (not in repo).
+
+**Previous (2026-10-05, 2nd pass): `security_operations_center_1/Incident_Response_Methodology.md`
+REWRITTEN (1007 lines) + new `cybersecurity_basics_1/Incident_Response_Template.md` (253 lines)**
+for the Incident Response Methodology rubric. The 2026-09-15 draft was factually wrong and has
 been replaced. Every claim re-verified live against the indexer/manager/TheHive/EveBox.
 
 **Structure:** §1 incident type + the REAL detection chain (read from the running ruleset) +
@@ -94,8 +106,9 @@ earlier "no successful login" note (which was based only on the 2026-09-30 run):
   16:18:16, **10-01 17:38:44 (10 min BEFORE the attack — unactioned early warning)**.
 - **`ignore="60"` + alert compression** = why `firedtimes` (92 on 10-01) >> indexed alerts (19).
   Always quote `rule.firedtimes`, not the hit count, when counting attack volume.
-- Windows agent 007 `DESKTOP-VCKJCPV` has 210 alerts on 10-05 (61104 x20, 60110 x4, 60132 x7,
-  23504 CVE-2026-82328 GIMP x7, 510 rootcheck NTFS ADS x3) — usable as host-state detection examples.
+- Windows agent 007 `DESKTOP-VCKJCPV` — full verified snapshot in "Agent 007 host telemetry"
+  below (re-queried 2026-10-05 ~18:50Z; the old "210 alerts" figure in this journal was a
+  mid-day partial count and is now superseded).
 
 **Other detection-layer gaps logged as G1-G8** (see doc §5.8): no notification path; 100010 not
 deployed; `40112` silently depends on `5715`'s group tag; duplicate level-10 rules (5763+40111);
@@ -107,6 +120,115 @@ live Suricata->Wazuh integration; endpoint visibility is journald-only (no proce
 `soc-lab/suricata/output/eve.json` (2 alerts, 203.0.113.77 -> 192.168.64.3:22, `action: allowed`,
 sev 2). Note the replayed pcap carries synthetic 2002-08-28 timestamps (scapy-generated) — say so
 rather than presenting them as real packet times.
+
+## Agent 007 host telemetry — DESKTOP-VCKJCPV (verified 2026-10-05 ~18:50Z)
+
+Identity: agent `007`, name `DESKTOP-VCKJCPV`, ip `10.11.1.232`, Wazuh v4.14.7, status `active`,
+`dateAdd 2026-09-23T18:05:34Z`, lastKeepAlive `2026-10-05T18:50:35Z`. **728 alerts total**, on only
+3 active days: 09-23 (437), 09-29 (42), 10-05 (248). Nothing 09-24..09-28 or 09-30..10-04 — the
+host was simply off, not silently failing.
+
+**GOTCHA — vulnerability data is at `data.vulnerability.*`, NOT top-level `vulnerability.*`.**
+Querying `vulnerability.cve` returns **0 hits** and looks like "no vulnerabilities found", which is
+a false negative. Correct paths: `data.vulnerability.cve`, `.severity`, `.package.name`,
+`.score.base`, `.cvss.cvss3.vector`. The 23504 alerts carry ONLY `@timestamp`/`data`/`rule` — there
+is no `full_log` at all. Same shape for SCA: `data.sca.check.result` (not `sca.check.result`).
+This is the single biggest query trap on this data set. (Confirmed by getting it wrong first-hand
+during the 2026-10-05 session: a `{"exists":{"field":"vulnerability"}}` query returned 0 hits on a
+host with 7 live CVEs.)
+
+**Vulnerability detector — 7 CVEs, all GIMP 3.2.40.0 x86_64, all Medium, all `status: Active`,
+all within a single 70 ms burst at `2026-10-05T15:36:57.109-15:36:57.178Z`, rule `23504` lvl 7
+(group `vulnerability-detector`).** Scan_id-independent; every alert carries the same package
+version so this is one scan, not seven findings over time.
+| CVE | CVSS base | published | CWE | notes |
+|---|---|---|---|---|
+| CVE-2026-82328 | 6.1 | 08-28 | CWE-125 | out-of-bounds read |
+| CVE-2026-82343 | 6.1 | 08-28 | CWE-120 | buffer copy without size check |
+| CVE-2026-78475 | 6.1 | 08-24 | CWE-125 | out-of-bounds read |
+| CVE-2026-82324 | 6.1 | 08-28 | CWE-125 | out-of-bounds read |
+| CVE-2026-82330 | 6.1 | 08-28 | CWE-125 | out-of-bounds read |
+| CVE-2026-79902 | 5.5 | 08-26 | CWE-190 | Seattle FilmWorks plugin, VLA/stack overflow -> DoS; **only one with `confidentiality_impact: NONE`** |
+| CVE-2026-80101 | 4.4 | 08-25 | CWE-125 | **only one with `availability_impact: LOW`** — hence the lower score |
+
+All 7 are assigner `redhat` and share `AV:L/PR:N/UI:R/S:U` (local, no privileges, user
+interaction required) with `integrity_impact: NONE` — so they are DoS/information-disclosure, not
+RCE, and low practical risk on a single-user lab box. **NOTE the indexer's vector object has NO
+`attack_complexity` key at all** (keys are attack_vector, availability, confidentiality_impact,
+integrity_impact, privileges_required, scope, user_interaction) — so do **not** write `AC:L` into
+any doc; it is not in the data. Only 23504 fires; there is no 23505/23506 (no "detected/unresolved"
+variant) and no `vulnerability-detector` summary alert in the index.
+
+**CIS SCA (Windows 10 Enterprise Benchmark v4.0.0) — 425 alerts: 304 `failed` (rule 19007, lvl 7),
+116 `passed` (19008, lvl 3), 5 `not applicable` (19009 x4 + 19013 x1, lvl 3).**
+**Score = 116/420 = 27.6% -> 27%.** Rule **`19005` lvl 9** = the summary alert
+`SCA summary: CIS Microsoft Windows 10 Enterprise Benchmark v4.0.0: Score less than 30% (27)`,
+fired 3x: 09-23 18:07:32, 09-23 18:07:48, 10-05 15:34:28. **The score did not improve between
+09-23 and 10-05 — identical 27% — so nothing was remediated in the 12 days.** That is the single
+best remediation-priority list available in this lab. Failure clusters worth citing in docs:
+guest account not renamed; `Do not require CTRL+ALT+DEL` not Disabled; last-signed-in user not
+hidden; machine inactivity limit + lockout threshold unset; anonymous SAM/share enumeration not
+blocked; **LAN Manager auth level not set to "Send NTLMv2 response only"; LLMNR/Null-session
+pipe settings default; UAC "Admin Approval Mode for built-in Administrator" not Enabled;
+elevation prompt for standard users not "Automatically deny"; `Audit Process Creation` does not
+include Success; ~25 services not disabled (Spooler, TermService, SessionEnv, RemoteRegistry-
+adjacent, MapsBroker, lfsvc, BITS-adjacent, Xbox*, Wecsvc, WerSvc, WMPNetworkSvc, icssvc,
+WpnService, PushToInstall, LxssManager, RasAuto, RpcLocator, SSDPSRV, upnphost, p2p*, PNRP*,
+MSiSCSI, lanmanserver, wercplsupport, wusb); and all three firewall profiles still show default
+logging (name/size/dropped/successful) + notification settings.
+
+**Windows event channel — 270 alerts.** `full_log` is EMPTY for all of them; the payload lives in
+`data.win.system` (`eventID`, `eventSourceName`, `channel`, `level`, `message`) and
+`data.win.eventdata`. Never write a doc that quotes `full_log` for these.
+- **Security-relevant, worth citing:**
+  - `60110` lvl **8** = **event 4738 "A user account was changed"**, **8x all on 10-05**
+    (15:33:12, 15:33:13, 15:52:36 x2, 16:55:02 x2, 17:31:08 x2 — each pair milliseconds apart).
+    Subject = SYSTEM `DESKTOP-VCKJCPV$` (`S-1-5-18`, WORKGROUP) via logon `0x3E7`; Target =
+    local user **`Kai` / "Kai Green"**, RID **1001**, SID `S-1-5-21-3649177984-1904162784-1086795393-1001`.
+    Paired-ms pattern = a credential/profile update loop, not interactive admin work. **The
+    captured events carry no changed-attribute detail, so "what changed" cannot be stated from the
+    indexer — say that rather than guessing it was a password change.**
+  - `61138` lvl 5 = event **7045 New Windows Service Created**, 4x: 09-29 15:03:01 + 15:03:01
+    (`GoogleUpdater` 156.0.8067.0 `updater.exe`, two `--service=` variants) and 10-05 15:33:08
+    (WSL: `Microsoft...WindowsSubsystemForLinux_3.0.1.0_x64...\wslinstaller.exe` and
+    `C:\Program Files\WSL\wslservice.exe`). **All benign and attributable** — software install,
+    not persistence.
+  - `67022` lvl 3 = event **4624** (16x), `67023` = **4634** logoff (14x), `67024` = **4648**
+    non-standard service logon (1x), `67028` lvl 3 = event **4672 Special privileges assigned**
+    (9x). The 4624/4672 pair is an **interactive MicrosoftAccount (MSA) sign-in**:
+    `logonProcessName User32`, `authenticationPackageName Negotiate`, `ipAddress 127.0.0.1`,
+    `workstationName DESKTOP-VCKJCPV`, `subjectDomainName MicrosoftAccount`. 4672 privilegeList =
+    SeSecurity, SeTakeOwnership, SeLoadDriver, SeBackup, SeRestore, SeDebug,
+    SeSystemEnvironment, SeImpersonate. **The MSA account name is deliberately NOT recorded in this
+    journal** (it is real PII and this file is committed to a public portfolio repo) — it is
+    retrievable from the indexer if ever needed for a writeup.
+  - `61104` lvl 3 = event 7040 service startup type changed (31x, 27 on 10-05 alone) — but every
+    one inspected is `BITS` / `SWUpdateService` / `WSLService` flipping between `auto start` and
+    `demand start`, i.e. Windows Update churn. **Volume here is noise, not 31 real changes.**
+  - `60776` lvl 7 / `60775` lvl 5 = event 6003/6000, `Wlclntfy`/`SessionEnv`, "The winlogon
+    notification ... unavailable" at 15:25:41 — correlates with the 15:25 service-start wave.
+  - `61110` lvl **10** = event **10010 DCOM** server time-out, 3x on 10-05 15:33 — **level 10 but
+    pure benign Windows noise**; a good example of level != severity.
+  - `60132` lvl 5 = event 4616 System time changed, 10x, all `svchost.exe` / `S-1-5-19` /
+    `SERVICE` — clock resync, benign. `657` lvl 3 = one `active-response` restart of `wazuh.exe`.
+- **Noise to explicitly exclude in any doc:** `60642` "Software protection service scheduled"
+  (51x), `61102` "Windows System error event" (37x), `60608` "Summary event of the report's
+  signatures" (42x), `60610`/`60612`/`60635` Windows Installer (11x), `60796`/`60798`/`60805`/
+  `60807`/`60808`/`60809` SQL Server engine (17x), `60668`/`60669` Windows Search (5x),
+  `60702` VSS idle (3x), `61109` DNS timeout for `fe3cr.delivery.mp.microsoft.com` (5x).
+- **`510` lvl 7 rootcheck, 12x across 3 days — same 3 false positives every time:**
+  `C:\Program Files\Intel® 2D Imaging:Win32App_1`, `C:\Program Files\rempl:Win32App_1`,
+  `C:\Program Files\UNP:Win32App_1` ("NTFS Alternate data stream found... possible hidden
+  content"). These are Zone.Identifier NTFS alternate data streams on signed installers — **not
+  evidence of hidden payloads.** Cite as a tuning example.
+
+**Coverage gaps on this host (important for scoping claims):** **zero syscollector/inventory
+alerts** (rules 8500/8700/5501/1570/1571 = 0 hits) and `os.*` is `None` in `/agents` for **all
+three** agents including the manager. So there is **no process, user, port or software inventory**
+— only FIM (510), CIS SCA (19005-19013), vulnerability detector (23504) and the raw Windows event
+channel. Any "what was running on the host" question is unanswerable from this data set. Unlike the
+Kali host, 007 does at least forward the Windows Application+Security event channels, so the
+`60104`/`60110`/`61104`/`67022`-family is genuinely available here.
 
 **Latest: SOC lab stage-2 stack live on Docker (2026-09-30) — TheHive + Suricata/EveBox
 deployed and verified alongside Wazuh.** Capstone screenshots can now come from real consoles:
@@ -239,6 +361,23 @@ What exists today (capstone):
   indexer `9200`. Kali Linux in UTM has the Wazuh agent enrolled (`10.11.x.x`).
 - Python system = 3.9.6. Project venv: `ai-agentic-soc/venv`.
 - Docker Desktop CLI NOT on default PATH (`/Applications/Docker.app/Contents/Resources/bin/docker`).
+- **RAM is the binding constraint: 16 GB total, swap was at 3.57 GB / 4 GB used.** Ubuntu VM asks for
+  8 GB, Kali 4 GB, Docker Desktop's VM holds ~8.3 GB. Do not run all three at once — it thrashes.
+- **UTM gotcha (cost us a session on 2026-10-05): NEVER launch UTM from the mounted `UTM.dmg`.**
+  macOS translocates it to a read-only copy under `/private/var/folders/.../AppTranslocation/`, and
+  a translocated UTM **silently creates a fresh empty VM instead of finding the existing one**. The
+  symptom is a VM whose `config.plist` has `"Drive" => []` and whose `Data/` holds only
+  `efi_vars.fd`, so QEMU opens **0** block images (`lsof -p <qemu_pid> | grep -c qcow2` = 0) and
+  the VM sits at the UEFI shell forever. Fix: eject the DMG and launch `/Applications/UTM.app`.
+  Detect it with `ps aux | grep AppTranslocation`.
+- **Quitting UTM shuts down ALL its VMs** (one app, many guests) — so never `Cmd+Q` UTM while a Kali
+  test is mid-run. Stop one VM via its own UTM UI instead.
+- UTM VMs live in the container's library, `~/Library/Containers/com.utmapp.UTM/Data/Documents/`;
+  monitor sockets are in `~/Library/Containers/WDNLXAD4W8.com.utmapp.UTM/`. `lsof` on the QEMU pid is
+  the fastest way to tell which disks a VM actually has open. Kali = `~/Downloads/Kali Linux 2023.utm`,
+  the Ubuntu VM = `~/Downloads/Ubuntu 22.04.utm` (both still in Downloads, not yet in the library).
+- `~/Desktop/fix-utm-ubuntu.sh` (written 2026-10-05) moves the real Ubuntu VM into UTM's library and
+  parks the broken stub. It aborts by design if any UTM VM is running. Run it after the Kali test.
 
 ## Decisions & gotchas
 
@@ -259,6 +398,45 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-10-06** — New deliverable integrated + committed:
+  `security_operations_center_1/Incident Response Documentation_ Case Management, Escalation, and
+  Ransomware Report.md` (from Downloads, rewritten 210 → 311 lines). User chose "real case +
+  ransomware annex" and "add lab mapping": Part 1 Jira/Slack generic model kept with new §1.3
+  mapping to TheHive 5.2.16 / case timeline (incl. gaps G1 connector and G4 no SLA clock);
+  Part 2 kept with new §2.4 tying SEV1-4 to the factor-matrix model, D1-D7 and the real timings;
+  Part 3 = full IR report for `SOC-CASE-2026-0142` (facts sourced from Incident_Response_
+  Methodology.md §6 — 40112 L12, 614 firedtimes, 71 ms session, self-generated srcip caveat,
+  isolation declined-with-reason, no personal data/not notifiable, findings I.1-I.9); §3.13 =
+  clearly-labelled illustrative ransomware annex (isolate-not-shutdown, protect backups first,
+  ransom-not-paid, comms, honest lab capability table). Not rubric-checked vs assignment PDF.
+- **2026-10-05 (session 3)** — Two housekeeping items, no rubric work.
+  **(a) UTM "Ubuntu 22.04" VM diagnosed and repair staged.** The VM in UTM's library
+  (`~/Library/Containers/com.utmapp.UTM/Data/Documents/Ubuntu 22.04.utm`, created 12:17 today) had
+  `"Drive" => []` and a `Data/` holding only `efi_vars.fd` — QEMU (pid 65178) had **0** block images
+  open, so it could only sit at the UEFI shell. Root cause: UTM was running from the still-mounted
+  `UTM.dmg` as a translocated read-only copy (`/private/var/folders/.../AppTranslocation/…/UTM.app`),
+  so it silently created a new empty VM instead of finding the existing one. **The real VM is intact**
+  at `~/Downloads/Ubuntu 22.04.utm` (UUID `4FB1781A…`, valid qcow2 v3, 64 GiB virtual / 25.8 GiB
+  actual, no backing file, 1 snapshot, 8 GB / 2 CPU / aarch64) and shut down cleanly at 12:17.
+  Did **not** quit UTM (that would kill the in-flight Kali test) and did **not** fight UTM's GUI for
+  the QMP monitor socket to stop the dead Ubuntu VM — it answers with SPICE binary, not QMP JSON,
+  and the dead VM holds no guest RAM anyway. Wrote `~/Desktop/fix-utm-ubuntu.sh`, which installs the
+  real VM into the library via an instant same-volume `mv` (no 26 GB copy), parks the broken stub as
+  `Ubuntu 22.04.utm.broken-empty-stub`, and deletes only the dead stub's socket. Its safety gate
+  aborts if any QEMU process or UTM is alive (tested — it correctly refused to run). Kali verified
+  untouched throughout: pid 73893, 27d uptime, disk handle intact, `192.168.64.3` reachable.
+  **(b) Agent 007 `DESKTOP-VCKJCPV` telemetry re-queried and written up** as a new
+  "Agent 007 host telemetry" section — supersedes the stale "210 alerts" line, which was a mid-day
+  partial count. 728 alerts across 3 active days. Recorded 7 GIMP CVEs (all Medium, all Active) with
+  the corrected CVSS breakdown, the 425-alert CIS SCA picture with the 27% score that has not moved
+  in 12 days, and the 270-alert Windows event channel split into security-relevant vs noise.
+  **Two mistakes I made and corrected while doing this** (both now warned about in the journal):
+  `vulnerability.*` is the wrong field path (it is `data.vulnerability.*`, and the wrong path
+  silently returns 0 hits on a host with 7 live CVEs), and my first CVSS reading mis-assigned
+  `CVE-2026-80101` as `confidentiality_impact: HIGH` when it is actually the only one with
+  `availability_impact: LOW`. Also established that the indexer never stores
+  `attack_complexity`, so no doc may claim `AC:L`. The MSA account name found in the 4624/4672
+  events is real PII and is **deliberately not recorded** in this journal.
 - **2026-10-05** — Rewrote `cybersecurity_basics_1/Incident_Response_Methodology.md` (357 -> 987
   lines) for the IR Methodology rubric and added `Incident_Response_Template.md` (253 lines, blank
   form Sections A-J with per-field guidance). Re-verified every fact live. **The 2026-09-15 draft
