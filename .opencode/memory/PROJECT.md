@@ -8,7 +8,18 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest (2026-10-06): `security_operations_center_1/Incident Response Documentation_ Case
+**Latest (2026-10-06, 3rd): Ubuntu 22.04 UTM VM enrolled as agent `008` — the lab now has a
+3-OS agent fleet, all `active`:** `002 Kali` (192.168.64.3, aarch64), `007 DESKTOP-VCKJCPV`
+(10.11.1.232, Windows 10 x86_64), **`008 ubuntu` (192.168.64.2, Ubuntu 22 aarch64)** — verified
+via API `/agents`. Gotcha hit during install: the VM is **arm64**, so the amd64 `.deb` fails with
+"package architecture does not match system"; correct package is
+`wazuh-agent_4.14.7-1_arm64.deb` from `packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/`.
+Manager address in the agent config = `192.168.64.1` (UTM bridge gateway), enrollment
+passwordless. **Next:** simulate threats on agent 008 (create `labtester` user, hydra from Kali ->
+expect stock rules 5760/5763/40112) and confirm VD/SCA/FIM telemetry lands in `wazuh-alerts-*`
+for the Ubuntu host.
+
+**Previous (2026-10-06): `security_operations_center_1/Incident Response Documentation_ Case
 Management, Escalation, and Ransomware Report.md` rewritten (311 lines) and added to the repo.**
 Came from Downloads as a fictional "Northwind ransomware" draft; per user decision it now = generic
 Jira/Slack model **kept + new §1.3 lab mapping** (TheHive = record, case timeline = coordination,
@@ -398,6 +409,12 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-10-06 (3rd)** — **Ubuntu UTM VM enrolled as Wazuh agent `008`** (name `ubuntu`,
+  192.168.64.2, Ubuntu 22, aarch64) — 3-OS fleet (002 Kali / 007 Windows / 008 Ubuntu) all
+  `active`, verified via API `/agents`. Gotcha: first install attempt used the **amd64** `.deb`
+  ("package architecture does not match system"); correct package = `wazuh-agent_4.14.7-1_
+  arm64.deb`. Manager address set to `192.168.64.1`; passwordless enrollment as before. Next:
+  threat simulation + VD/SCA/FIM telemetry check for agent 008.
 - **2026-10-06 (2nd)** — Student reports **fresh Ubuntu installed on UTM**; next step = enroll a
   Wazuh agent from it. Docker stack verified up: manager publishes **1514-1515 + 55000** on
   `0.0.0.0`. Reminders for that task: set `<address>` in the agent `ossec.conf` to the host's
