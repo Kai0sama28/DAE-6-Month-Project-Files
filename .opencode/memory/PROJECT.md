@@ -8,7 +8,35 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest (2026-10-06, 3rd): Ubuntu 22.04 UTM VM enrolled as agent `008` — the lab now has a
+**Latest (2026-10-13, 2nd): Parrot Security 7.4 (arm64) VM imported into UTM's library.** Source
+was `~/Downloads/Parrot-security-7.4_arm64.utm.tar` (13.8 GB) — a pre-built UTM **bundle**, NOT
+an ISO (must `tar -xf` it; do not attach as a disk). Extracted, right-sized for the 16 GB host
+(**RAM 8192 -> 4096, CPU 8 -> 4** in `config.plist`; stock config requested 8 GB, which would
+thrash alongside Docker-Wazuh), moved to
+`~/Library/Containers/com.utmapp.UTM/Data/Documents/Parrot-security-7.4_arm64.utm`, and the
+tarball deleted (disk back to ~29 GB free). VM = QEMU qcow2 **v3**, 64 GiB virtual disk,
+`aarch64`/`virt`, network `Shared`. **Resolved 2026-10-13:** UTM was quit, `/Volumes/UTM`
+ejected (`hdiutil detach`), and UTM **relaunched from `/Applications` (verified non-translocated)**;
+the Parrot bundle was opened in UTM and is ready to boot. (The quit stopped the running Kali +
+Ubuntu VMs; they show as powered-off in UTM and can be restarted on demand. NOTE: 16 GB RAM cannot
+host Docker-Wazuh + Parrot + Kali + Ubuntu simultaneously — run at most one or two guests.) Next:
+boot Parrot, install
+`wazuh-agent_4.14.7-1_arm64.deb` (arm64, already in workspace root), set `<address>` to
+`192.168.64.1`, enroll passwordless (same pattern as agent 008), then Wireshark + Volatility.
+
+**Previous (2026-10-13): Wireshark 4.6.9 installed on the macOS host** (Homebrew cask
+`wireshark-app`): GUI at `/Applications/Wireshark.app` + CLI `tshark`/`dumpcap`/`capinfos`/
+`editcap`/`mergecap`/`text2pcap`. `ChmodBPF` helper installed, so non-root capture works —
+user `Adult` is in group `access_bpf`, `/dev/bpf0` is `root:access_bpf`. Verified end-to-end:
+loopback capture `dumpcap -i lo0 -f "icmp"` (8 packets) + `tshark -Y "icmp"` display filter both
+work. This is the **stopgap for the IR Environment Setup assignment** (which specifies Wireshark
+on Parrot OS/VirtualBox); the Parrot ISO is still being obtained. Gotcha: the cask installer
+needs an admin password for the BPF helper — a non-interactive shell cannot supply it, so it was
+driven via an osascript `SUDO_ASKPASS` prompt (script `.../T/opencode/brew-askpass.sh`). New
+empty module folders `Incident_Response_1/` and `Security_Monitoring_1/` were created 2026-10-13
+(no content yet).
+
+**Previous (2026-10-06, 3rd): Ubuntu 22.04 UTM VM enrolled as agent `008` — the lab now has a
 3-OS agent fleet, all `active`:** `002 Kali` (192.168.64.3, aarch64), `007 DESKTOP-VCKJCPV`
 (10.11.1.232, Windows 10 x86_64), **`008 ubuntu` (192.168.64.2, Ubuntu 22 aarch64)** — verified
 via API `/agents`. Gotcha hit during install: the VM is **arm64**, so the amd64 `.deb` fails with
@@ -409,6 +437,39 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-10-13 (3rd)** — Deployed **3 custom Wazuh rules** to the Docker manager via a new
+  bind-mount (`config/wazuh_cluster/rules/local_rules.xml` -> `/var/ossec/etc/rules/
+  local_rules.xml:ro`, added to `docker-compose.yml`). IDs **100030** (SSH brute-force success,
+  lvl 13, `if_sid 5715` + `if_matched_sid 5760`, T1110/T1078), **100031** (SSH password spraying,
+  lvl 10, freq 6/300s, `different_user`, T1110.003), **100032** (critical FIM on
+  `/etc/passwd|shadow|gshadow|sudoers|ssh/*`, lvl 10, T1098.004/T1565.001/T1070.004).
+  Renumbered from 100010-100020 because the pre-existing **`threatescalation.xml` already uses
+  100001-100021** (rule-ID collision -> logtest "duplicated" warning). **GOTCHA discovered:**
+  stock rule **5760's group is `authentication_failed` (singular)** and the plural
+  `authentication_failures` only tags **5733** ("Invalid credentials"). Therefore stock `40112`'s
+  `if_matched_group>authentication_failures` **rarely matches a normal "Failed password" brute
+  force**, and a custom rule keyed on that group would silently never fire — 100030 was fixed to
+  use `if_matched_sid>5760` directly. All 3 verified loaded via the Wazuh API; `wazuh-logtest`
+  confirms the sshd decode (5760) but **cannot exercise correlation rules** (it processes each
+  line statelessly, no `if_matched` history). Pre-existing warning left as-is: `threatescalation
+  .xml` rule 100021 references a missing list `etc/lists/malicious-domains` and is ignored. Rules
+  live OUTSIDE the workspace (Docker config), not in the repo. Real end-to-end firing still to be
+  demonstrated by generating live events from a booted Linux agent.
+- **2026-10-13 (2nd)** — Imported **Parrot Security 7.4 arm64** into UTM. The `*.utm.tar` is a
+  pre-built UTM VM bundle (not an ISO); extracted with `tar -xf`, edited `config.plist` to
+  `MemorySize 4096` / `CPUCount 4` (stock 8192/8 would thrash the 16 GB host), moved the bundle
+  into UTM's library `Documents/`, and deleted the 13.8 GB tarball. Bundle verified: qcow2 v3,
+  64 GiB virtual, aarch64. **Did not first-boot it** — UTM is translocated from `/Volumes/UTM`
+  (known 2026-10-05 bug); needs quit + DMG eject + relaunch `/Applications/UTM.app`. Journal
+  edit only — not yet committed.
+- **2026-10-13** — Installed **Wireshark 4.6.9 on the macOS host** (Homebrew cask
+  `wireshark-app`) as the stopgap for the IR Environment Setup rubric (which wants Wireshark on
+  Parrot OS/VirtualBox; Parrot ISO still pending). GUI + full CLI suite installed; `ChmodBPF`
+  grants group `access_bpf` capture so non-root dumpcap works. Verified with a loopback icmp
+  capture + tshark display filter. Cask needs an admin password for the BPF helper, so a
+  non-interactive shell can't install it alone — used an osascript `SUDO_ASKPASS` prompt. Also
+  noted two new empty module dirs (`Incident_Response_1/`, `Security_Monitoring_1/`). Journal
+  edit only — not yet committed.
 - **2026-10-06 (3rd)** — **Ubuntu UTM VM enrolled as Wazuh agent `008`** (name `ubuntu`,
   192.168.64.2, Ubuntu 22, aarch64) — 3-OS fleet (002 Kali / 007 Windows / 008 Ubuntu) all
   `active`, verified via API `/agents`. Gotcha: first install attempt used the **amd64** `.deb`
