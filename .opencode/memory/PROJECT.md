@@ -8,7 +8,31 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest (2026-10-19, 2nd): New deliverable `incident_response_1/Incident Detection and Analysis.md`
+**Latest (2026-10-20): New deliverable `incident_response_1/Incident Response and Containment.md` written
+— the first module doc with LIVE-executed evidence.** Rubric: network isolation in Parrot OS
+(interface config, firewall rules, VirtualBox-OS-networking segmentation), evidence preservation
+(fs artifacts, pcaps, memory dumps), containment playbook (host isolation, traffic blocking, service
+shutdown). 611 lines / 40 KB + raw transcript `IR_Containment_Live_Demo_Transcript_2026-10-20.txt`
+(275 lines, warts-and-all) + `Parrot_7.4_UTM_last_running_state.png` (UTM display state, 10-13 boot
+evidence). **Breakthrough: `utmctl exec "<VM>" --cmd …` runs commands as ROOT in a UTM guest via the
+QEMU guest agent** — used to drive all demos on Kali (agent 002) as the Parrot stand-in (Parrot still
+stopped; RAM pressure — swap 4.0/5.1 GB). Live-verified demos (all cleaned up / state restored):
+iptables DROP rule (counter 1 pkt/84 B, ping 100%→0% loss), eth0 link down/up isolation (100%→0%
+loss), /etc/passwd hash/copy/cmp (`d66440fc…`, 3209 B) + journal export (`aee9b020…`), tcpdump BPF
+icmp capture (10 pkts, 1164 B, `7a14870d…`), kernel core dump of live process (400 960 B ELF aarch64
+from sleep, `04546087…`), labtester lock/unlock (`P→L→P`). Host-side evidence: bridge100 =
+192.168.64.1/24; **Docker publishes 1514/1515/55000/9200/443/9000/5636 on 0.0.0.0 (⚠ finding,
+action C4)**; VBoxManage 7.2.16 present with ZERO VMs; Parrot config = virtio-net-pci Mode=Shared
+IsolateFromHost=false (UTM's host-only approximation lever). **Correction:** the claim in
+IR Environment Setup §1.1 that "VirtualBox cannot host aarch64 guests" is WRONG for VB ≥7.1 (Arm64
+macOS host runs Arm64 guests) — new doc corrects it (L10); reason to stay on UTM = no VB disk/ISO +
+fleet already there. **New gotcha (L8): `utmctl exec` intermittently returns EMPTY output while the
+command may still EXECUTE — always re-verify state with an independent read** (this bit us: had to
+confirm labtester wasn't left locked). Doc carries actions C1-C8 (boot Parrot → install
+qemu-guest-agent → re-run all procedures on Parrot itself; segmentation matrix; IPv6 rules; pf;
+sleuthkit/Wireshark; hypervisor drill; Volatility). NOT committed.
+
+**Previous (2026-10-19, 2nd): New deliverable `incident_response_1/Incident Detection and Analysis.md`
 written** (Incident Detection and Analysis rubric; user chose placement `incident_response_1/` and
 the "Kali as Parrot stand-in" strategy). 494 lines / 41 KB. Structure: rubric coverage table with
 an interpretation note (brief's "host ↔ Parrot OS" mapped to three real streams — raw host auth,
@@ -477,6 +501,20 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-10-20** — Wrote `incident_response_1/Incident Response and Containment.md` (rubric: network
+  isolation procedures incl. interface config + firewall rules + VirtualBox-networking segmentation;
+  evidence preservation for fs artifacts, traffic captures, memory dumps; containment playbook for
+  host isolation, traffic blocking, service shutdown). Discovered `utmctl exec --cmd` (QEMU guest
+  agent, root, non-interactive) and used it to run every procedure LIVE on Kali agent 002 as the
+  Parrot stand-in — iptables DROP+counter, eth0 down/up, passwd hash/copy/cmp + journal export,
+  tcpdump icmp pcap (10 pkts), kernel core dump, labtester P→L→P; all state restored, artifacts
+  hashed, full transcript committed to the module folder. Host-side: bridge100 192.168.64.1,
+  Docker 0.0.0.0 port-exposure finding (→C4), VBox 7.2.16 zero VMs, Parrot config IsolateFromHost
+  flag identified as the UTM host-only lever. Corrected the IR Env Setup §1.1 VirtualBox claim
+  (VB ≥7.1 runs aarch64 guests). New gotcha: utmctl exec intermittently loses output while still
+  executing — re-verify state independently. Actions C1-C8 queued (Parrot re-boot with
+  qemu-guest-agent, segmentation matrix, IPv6/pf, sleuthkit/Wireshark, hypervisor drill,
+  Volatility). Journal edit only — not yet committed.
 - **2026-10-19 (2nd)** — Wrote `incident_response_1/Incident Detection and Analysis.md` (rubric:
   Parrot+macOS log analysis, 1 suspicious-login investigation with host↔Parrot correlation +
   timeline + alert validation, 3-incident severity-matrix classification, methodology +

@@ -1,0 +1,275 @@
+Incident Response & Containment - live demonstration transcript
+Date (UTC): 2026-10-20 17:44:30
+Guest: Kali Linux 2023 (Kali Linux arm64, UTM/QEMU guest agent exec)
+Role: documented Parrot-OS stand-in (identical Debian toolchain)
+
+===== S1 - ENVIRONMENT RECONNAISSANCE (guest) =====
+$ /bin/bash -c date -u; uname -a; head -2 /etc/os-release; echo USER=$(whoami); ip -br a; for t in tcpdump gdb capinfos sha256sum file; do printf "%s: " "$t"; command -v "$t" || echo MISSING; done; systemctl is-active ssh ssh 2>/dev/null; passwd -S labtester; ls -la /var/log/auth.log
+
+===== S1b - BASELINE FIREWALL STATE (guest) =====
+$ /usr/sbin/iptables -S
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+
+$ /bin/bash -c /usr/sbin/iptables -L INPUT -v -n --line-numbers
+Chain INPUT (policy ACCEPT 0 packets, 0 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+
+===== S2 - FIREWALL TRAFFIC-BLOCKING DEMO (drop ICMP echo from management host, verify, remove) =====
+$ /bin/bash -c /usr/sbin/iptables -I INPUT 1 -s 192.168.64.1 -p icmp --icmp-type echo-request -j DROP && /usr/sbin/iptables -S INPUT | head -3
+
+[host]$ ping -c 2 -W 1000 192.168.64.3
+PING 192.168.64.3 (192.168.64.3): 56 data bytes
+64 bytes from 192.168.64.3: icmp_seq=0 ttl=64 time=1.570 ms
+
+--- 192.168.64.3 ping statistics ---
+2 packets transmitted, 1 packets received, 50.0% packet loss
+round-trip min/avg/max/stddev = 1.570/1.570/1.570/nan ms
+
+$ /bin/bash -c /usr/sbin/iptables -L INPUT -v -n --line-numbers | head -5
+Chain INPUT (policy ACCEPT 0 packets, 0 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        1    84 DROP       1    --  *      *       192.168.64.1         0.0.0.0/0            icmptype 8
+
+$ /bin/bash -c /usr/sbin/iptables -D INPUT 1 && echo RULE-REMOVED && /usr/sbin/iptables -S
+RULE-REMOVED
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+
+[host]$ ping -c 2 -W 1000 192.168.64.3
+PING 192.168.64.3 (192.168.64.3): 56 data bytes
+64 bytes from 192.168.64.3: icmp_seq=0 ttl=64 time=0.503 ms
+64 bytes from 192.168.64.3: icmp_seq=1 ttl=64 time=0.821 ms
+
+--- 192.168.64.3 ping statistics ---
+2 packets transmitted, 2 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 0.503/0.662/0.821/0.159 ms
+
+===== S3 - NETWORK INTERFACE ISOLATION DEMO (L1: link down/up on eth0) =====
+$ /bin/bash -c /usr/sbin/ip link set eth0 down; sleep 1; ip -br a eth0
+
+[host]$ ping -c 2 -W 1000 192.168.64.3
+PING 192.168.64.3 (192.168.64.3): 56 data bytes
+Request timeout for icmp_seq 0
+
+--- 192.168.64.3 ping statistics ---
+2 packets transmitted, 0 packets received, 100.0% packet loss
+
+$ /bin/bash -c /usr/sbin/ip link set eth0 up; for i in 1 2 3 4 5 6 7 8 9 10; do sleep 1; ip -br a eth0 | grep -q "192.168.64" && break; done; ip -br a eth0
+
+[host]$ ping -c 2 -W 1000 192.168.64.3
+PING 192.168.64.3 (192.168.64.3): 56 data bytes
+64 bytes from 192.168.64.3: icmp_seq=0 ttl=64 time=0.905 ms
+64 bytes from 192.168.64.3: icmp_seq=1 ttl=64 time=0.704 ms
+
+--- 192.168.64.3 ping statistics ---
+2 packets transmitted, 2 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 0.704/0.804/0.905/0.100 ms
+
+===== S4 - FILE-SYSTEM EVIDENCE PRESERVATION (hash, copy, verify - chain of custody) =====
+$ /bin/bash -c mkdir -p /home/kali/evidence/SOC-CASE-2026-0142/fs /home/kali/evidence/SOC-CASE-2026-0142/net /home/kali/evidence/SOC-CASE-2026-0142/mem && ls -ld /home/kali/evidence/SOC-CASE-2026-0142/*
+drwxr-xr-x 2 root root 4096 Oct 20 10:44 /home/kali/evidence/SOC-CASE-2026-0142/fs
+drwxr-xr-x 2 root root 4096 Oct 20 10:44 /home/kali/evidence/SOC-CASE-2026-0142/mem
+drwxr-xr-x 2 root root 4096 Oct 20 10:44 /home/kali/evidence/SOC-CASE-2026-0142/net
+
+$ /bin/bash -c cd /home/kali/evidence/SOC-CASE-2026-0142/fs && sha256sum /var/log/auth.log | tee auth.log.orig.sha256 && cp -a --preserve=all /var/log/auth.log ./auth.log && sha256sum ./auth.log | tee auth.log.copy.sha256 && cmp /var/log/auth.log ./auth.log && echo "CMP: IDENTICAL" && stat -c "%n | %s bytes | mtime %y" /var/log/auth.log ./auth.log
+sha256sum: /var/log/auth.log: No such file or directory
+cp: cannot stat '/var/log/auth.log': No such file or directory
+
+===== S5 - NETWORK TRAFFIC CAPTURE (tcpdump capture filter, generate traffic, hash capture) =====
+$ /bin/bash -c cd /home/kali/evidence/SOC-CASE-2026-0142/net && nohup tcpdump -i eth0 -s 0 -c 20 -w demo_icmp.pcap "icmp" >/tmp/td.log 2>&1 & echo "tcpdump started pid $!"
+
+[host]$ ping -c 5 -W 500 192.168.64.3
+PING 192.168.64.3 (192.168.64.3): 56 data bytes
+64 bytes from 192.168.64.3: icmp_seq=0 ttl=64 time=0.872 ms
+64 bytes from 192.168.64.3: icmp_seq=1 ttl=64 time=0.607 ms
+64 bytes from 192.168.64.3: icmp_seq=2 ttl=64 time=0.705 ms
+64 bytes from 192.168.64.3: icmp_seq=3 ttl=64 time=0.770 ms
+64 bytes from 192.168.64.3: icmp_seq=4 ttl=64 time=0.719 ms
+
+--- 192.168.64.3 ping statistics ---
+5 packets transmitted, 5 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 0.607/0.735/0.872/0.087 ms
+
+$ /bin/bash -c cd /home/kali/evidence/SOC-CASE-2026-0142/net && tcpdump -r demo_icmp.pcap -nn 2>/dev/null | head -8; echo "packets: $(tcpdump -r demo_icmp.pcap 2>/dev/null | wc -l)"; ls -lh demo_icmp.pcap; sha256sum demo_icmp.pcap
+packets: 0
+-rw-r--r-- 1 tcpdump tcpdump 0 Oct 20 10:44 demo_icmp.pcap
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  demo_icmp.pcap
+
+===== S6 - BASIC MEMORY DUMP (gcore of a live process) =====
+$ /bin/bash -c cd /home/kali/evidence/SOC-CASE-2026-0142/mem && sleep 600 & echo $! > /tmp/sleeppid; sleep 1; PID=$(cat /tmp/sleeppid); echo "target pid: $PID ($(ps -p $PID -o args=))"; gcore -o /home/kali/evidence/SOC-CASE-2026-0142/mem/sleep_core $PID; ls -lh /home/kali/evidence/SOC-CASE-2026-0142/mem/; file /home/kali/evidence/SOC-CASE-2026-0142/mem/sleep_core.$PID; sha256sum /home/kali/evidence/SOC-CASE-2026-0142/mem/sleep_core.$PID; kill $PID && echo "test process terminated"
+
+===== S7 - ACCOUNT CONTAINMENT (lock, verify, restore - test account) =====
+$ /bin/bash -c passwd -S labtester; usermod -L labtester && echo "LOCKED"; passwd -S labtester; echo "note: field in passwd -S output: P=password set, L=password locked"; usermod -U labtester && echo "UNLOCKED"; passwd -S labtester
+
+===== S8 - CLEANUP VERIFICATION (state back to baseline) =====
+$ /usr/sbin/iptables -S
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+
+$ /bin/bash -c ip -br a eth0; pgrep -a sleep || echo "no leftover sleep process"
+
+
+===== END OF TRANSCRIPT (2026-10-20 17:44:50) =====
+
+===== PART 2 — RETEST OF S4–S8 (S5 tcpdump closed properly; S4 uses real artifacts) =====
+$ /bin/kill -INT 655312
+/bin/kill: (655312): No such process
+$ /bin/bash -c cd /home/kali/evidence/SOC-CASE-2026-0142/net && tcpdump -r demo_icmp.pcap -nn | head -12; echo "packets: $(tcpdump -r demo_icmp.pcap 2>/dev/null | wc -l)"; capinfos demo_icmp.pcap | head -8; sha256sum demo_icmp.pcap
+10:44:42.505594 IP 192.168.64.1 > 192.168.64.3: ICMP echo request, id 40194, seq 0, length 64
+10:44:42.505654 IP 192.168.64.3 > 192.168.64.1: ICMP echo reply, id 40194, seq 0, length 64
+10:44:43.510542 IP 192.168.64.1 > 192.168.64.3: ICMP echo request, id 40194, seq 1, length 64
+10:44:43.510594 IP 192.168.64.3 > 192.168.64.1: ICMP echo reply, id 40194, seq 1, length 64
+10:44:44.511853 IP 192.168.64.1 > 192.168.64.3: ICMP echo request, id 40194, seq 2, length 64
+10:44:44.511906 IP 192.168.64.3 > 192.168.64.1: ICMP echo reply, id 40194, seq 2, length 64
+10:44:45.515189 IP 192.168.64.1 > 192.168.64.3: ICMP echo request, id 40194, seq 3, length 64
+10:44:45.515247 IP 192.168.64.3 > 192.168.64.1: ICMP echo reply, id 40194, seq 3, length 64
+10:44:46.520336 IP 192.168.64.1 > 192.168.64.3: ICMP echo request, id 40194, seq 4, length 64
+10:44:46.520387 IP 192.168.64.3 > 192.168.64.1: ICMP echo reply, id 40194, seq 4, length 64
+packets: 10
+File name:           demo_icmp.pcap
+File type:           Wireshark/tcpdump/... - pcap
+File encapsulation:  Ethernet
+File timestamp precision:  microseconds (6)
+Packet size limit:   file hdr: 262144 bytes
+Number of packets:   10
+File size:           1164 bytes
+Data size:           980 bytes
+7a14870d0fc7c489dced468a8c69366aad29d44afff59592413e77387e0a69a1  demo_icmp.pcap
+reading from file demo_icmp.pcap, link-type EN10MB (Ethernet), snapshot length 262144
+
+===== PART 2b — S1 RECON (compact) + S4 FILE EVIDENCE (real artifacts) =====
+$ /bin/bash -c date -u; uname -r; . /etc/os-release && echo "$PRETTY_NAME"; whoami; ip -br a; cat /proc/sys/kernel/core_pattern; command -v gdb || echo "gdb: NOT INSTALLED"
+Tue Oct 20 17:49:59 UTC 2026
+6.3.0-kali1-arm64
+Kali GNU/Linux Rolling
+root
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+eth0             UP             192.168.64.3/24 fd7a:dcb7:ecf0:79c9:e8f0:2fff:fe00:113a/64 fe80::e8f0:2fff:fe00:113a/64 
+core
+gdb: NOT INSTALLED
+
+$ /bin/bash -c cd /home/kali/evidence/SOC-CASE-2026-0142/fs && sha256sum /etc/passwd | tee passwd.orig.sha256 && cp -a --preserve=all /etc/passwd ./passwd && sha256sum ./passwd | tee passwd.copy.sha256 && cmp /etc/passwd ./passwd && echo "CMP: IDENTICAL" && stat -c "%n | %s bytes | mtime %y" /etc/passwd ./passwd
+d66440fcd129fd6f4261f64a933fdfdd59230b66d555c961ee7cd818ad7642be  /etc/passwd
+d66440fcd129fd6f4261f64a933fdfdd59230b66d555c961ee7cd818ad7642be  ./passwd
+CMP: IDENTICAL
+/etc/passwd | 3209 bytes | mtime 2026-10-20 10:44:50.037995297 -0700
+./passwd | 3209 bytes | mtime 2026-10-20 10:44:50.037995297 -0700
+
+FAILED-5-TRIES: /bin/bash -c journalctl --no-pager -n 60 > /home/kali/evidence/SOC-CASE-2026-0142/fs/journal_tail_60.txt && wc -l /home/kali/evidence/SOC-CASE-2026-0142/fs/journal_tail_60.txt && sha256sum /home/kali/evidence/SOC-CASE-2026-0142/fs/journal_tail_60.txt
+
+===== PART 2c — S6 BASIC MEMORY DUMP (kernel core of live process, core_pattern=core) =====
+FAILED-5-TRIES: /bin/bash -c cd /home/kali/evidence/SOC-CASE-2026-0142/mem && ulimit -c unlimited && sleep 600 & PID=$!; sleep 1; echo "target: $(ps -p $PID -o pid=,comm=)"; kill -ABRT $PID; sleep 2; ls -lh /home/kali/evidence/SOC-CASE-2026-0142/mem/; file /home/kali/evidence/SOC-CASE-2026-0142/mem/core; sha256sum /home/kali/evidence/SOC-CASE-2026-0142/mem/core; ps -p $PID > /dev/null && echo STILL-ALIVE || echo "process terminated by SIGABRT (core retained)"
+  (S6 split into short steps — QGA exec times out on long-running commands)
+$ /bin/bash -c ulimit -c unlimited; cd /home/kali/evidence/SOC-CASE-2026-0142/mem; nohup sleep 600 >/dev/null 2>&1 & echo $! > /tmp/sp; echo "started test process pid $(cat /tmp/sp)"
+started test process pid 659366
+
+$ /bin/bash -c PID=$(cat /tmp/sp); ps -p $PID -o pid=,comm=,rss=; kill -ABRT $PID; echo "SIGABRT sent"
+SIGABRT sent
+/bin/bash: line 1: kill: (659366) - No such process
+
+$ /bin/bash -c ls -lh /home/kali/evidence/SOC-CASE-2026-0142/mem/; file /home/kali/evidence/SOC-CASE-2026-0142/mem/core; sha256sum /home/kali/evidence/SOC-CASE-2026-0142/mem/core
+total 124K
+-rw------- 1 root root 400K Oct 20 10:52 core
+/home/kali/evidence/SOC-CASE-2026-0142/mem/core: ELF 64-bit LSB core file, ARM aarch64, version 1 (SYSV), SVR4-style, from 'sleep 600', real uid: 0, effective uid: 0, real gid: 0, effective gid: 0, execfn: '/usr/bin/sleep', platform: 'aarch64'
+045460872fe3bec6233bb943012252660515dd05973200745538c73ac299e930  /home/kali/evidence/SOC-CASE-2026-0142/mem/core
+
+
+===== PART 2d — S7 ACCOUNT CONTAINMENT + S8 CLEANUP VERIFICATION =====
+$ /bin/bash -c passwd -S labtester
+labtester P 2026-10-01 0 99999 7 -1
+
+FAILED-5-TRIES: /bin/bash -c usermod -L labtester; passwd -S labtester
+FAILED-5-TRIES: /bin/bash -c usermod -U labtester; passwd -S labtester
+FAILED-5-TRIES: /bin/bash -c iptables -S; ip -br a eth0; pgrep -a sleep; echo cleanup-check-done
+$ /bin/bash -c timeout 4 journalctl --no-pager -n 20 2>/dev/null | tail -4; echo ---; sha256sum /home/kali/evidence/SOC-CASE-2026-0142/fs/* /home/kali/evidence/SOC-CASE-2026-0142/net/* /home/kali/evidence/SOC-CASE-2026-0142/mem/*
+Oct 20 10:53:26 kali qemu-ga[546]: info: guest-exec-status called, pid: 659948
+Oct 20 10:53:28 kali qemu-ga[546]: info: guest-exec called: "/bin/bash -c timeout 4 journalctl --no-pager -n 20 2>/dev/null | tail -4; echo ---; sha256sum /home/kali/evidence/SOC-CASE-2026-0142/fs/* /home/kali/evidence/SOC-CASE-2026-0142/net/* /home/kali/evidence/SOC-CASE-2026-0142/mem/*"
+Oct 20 10:53:28 kali qemu-ga[546]: info: guest-exec-status called, pid: 659961
+Oct 20 10:53:29 kali qemu-ga[546]: info: guest-exec called: "/bin/bash -c timeout 4 journalctl --no-pager -n 20 2>/dev/null | tail -4; echo ---; sha256sum /home/kali/evidence/SOC-CASE-2026-0142/fs/* /home/kali/evidence/SOC-CASE-2026-0142/net/* /home/kali/evidence/SOC-CASE-2026-0142/mem/*"
+---
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /home/kali/evidence/SOC-CASE-2026-0142/fs/auth.log.orig.sha256
+aee9b020259722f8cd3f41a788883db0ee66e66d9799b23140976c081bcd155c  /home/kali/evidence/SOC-CASE-2026-0142/fs/journal_tail_60.txt
+d66440fcd129fd6f4261f64a933fdfdd59230b66d555c961ee7cd818ad7642be  /home/kali/evidence/SOC-CASE-2026-0142/fs/passwd
+28833c73c1acaa258655f010e686e6e4214d6b6f8767c86d5e21626ad2286198  /home/kali/evidence/SOC-CASE-2026-0142/fs/passwd.copy.sha256
+61b0e717e3e07a749d9b7acfa5fb8a91dfc9eb3058c571afe1ad7a65cd88e314  /home/kali/evidence/SOC-CASE-2026-0142/fs/passwd.orig.sha256
+7a14870d0fc7c489dced468a8c69366aad29d44afff59592413e77387e0a69a1  /home/kali/evidence/SOC-CASE-2026-0142/net/demo_icmp.pcap
+045460872fe3bec6233bb943012252660515dd05973200745538c73ac299e930  /home/kali/evidence/SOC-CASE-2026-0142/mem/core
+
+
+===== PART 2e — FINAL STATE VERIFICATION + CLEANUP OF EMPTY ARTIFACT =====
+$ /bin/bash -c rm -f /home/kali/evidence/SOC-CASE-2026-0142/fs/auth.log.orig.sha256; passwd -S labtester; iptables -S; ip -br a eth0; ls -laR /home/kali/evidence/SOC-CASE-2026-0142/ | head -30
+labtester P 2026-10-01 0 99999 7 -1
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+/home/kali/evidence/SOC-CASE-2026-0142/:
+total 20
+drwxr-xr-x 5 root root 4096 Oct 20 10:44 .
+drwxr-xr-x 3 root root 4096 Oct 20 10:44 ..
+drwxr-xr-x 2 root root 4096 Oct 20 10:54 fs
+drwxr-xr-x 2 root root 4096 Oct 20 10:52 mem
+drwxr-xr-x 2 root root 4096 Oct 20 10:44 net
+
+/home/kali/evidence/SOC-CASE-2026-0142/fs:
+total 32
+drwxr-xr-x 2 root root 4096 Oct 20 10:54 .
+drwxr-xr-x 5 root root 4096 Oct 20 10:44 ..
+-rw-r--r-- 1 root root 8639 Oct 20 10:50 journal_tail_60.txt
+-rw-r--r-- 1 root root 3209 Oct 20 10:44 passwd
+-rw-r--r-- 1 root root   75 Oct 20 10:50 passwd.copy.sha256
+-rw-r--r-- 1 root root   78 Oct 20 10:50 passwd.orig.sha256
+
+/home/kali/evidence/SOC-CASE-2026-0142/mem:
+total 132
+drwxr-xr-x 2 root root   4096 Oct 20 10:52 .
+drwxr-xr-x 5 root root   4096 Oct 20 10:44 ..
+-rw------- 1 root root 409600 Oct 20 10:52 core
+
+/home/kali/evidence/SOC-CASE-2026-0142/net:
+total 12
+drwxr-xr-x 2 root    root    4096 Oct 20 10:44 .
+drwxr-xr-x 5 root    root    4096 Oct 20 10:44 ..
+-rw-r--r-- 1 tcpdump tcpdump 1164 Oct 20 10:49 demo_icmp.pcap
+Command "eth0" is unknown, try "ip address help".
+
+$ /bin/bash -c wc -l /home/kali/evidence/SOC-CASE-2026-0142/fs/journal_tail_60.txt; head -3 /home/kali/evidence/SOC-CASE-2026-0142/fs/journal_tail_60.txt
+60 /home/kali/evidence/SOC-CASE-2026-0142/fs/journal_tail_60.txt
+Oct 20 10:45:01 kali dbus-daemon[1827]: [session uid=1000 pid=1827] Activating service name='org.xfce.Xfconf' requested by ':1.23' (uid=1000 pid=1976 comm="xfce4-panel --display :0.0 --sm-client-id 2b1fb269")
+Oct 20 10:45:01 kali dbus-daemon[1827]: [session uid=1000 pid=1827] Successfully activated service 'org.xfce.Xfconf'
+Oct 20 10:45:01 kali CRON[655557]: pam_unix(cron:session): session opened for user root(uid=0) by (uid=0)
+
+
+===== PART 2f — S7 ACCOUNT LOCK EVIDENCE (retry) =====
+FAILED: /bin/bash -c usermod -L labtester && passwd -S labtester
+FAILED: /bin/bash -c usermod -U labtester && passwd -S labtester
+$ /bin/bash -c ip -br a
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+eth0             UP             192.168.64.3/24 fd7a:dcb7:ecf0:79c9:e8f0:2fff:fe00:113a/64 fe80::e8f0:2fff:fe00:113a/64 
+
+
+===== PART 2g — S7 ACCOUNT LOCK (single-command calls) =====
+[guest]# /usr/sbin/usermod -L labtester
+Error from event: The operation couldn’t be completed. (OSStatus error -2700.)
+Guest agent command failed, error was 'Failed to execute child process â/usr/sbin/usermod -L labtesterâ (No such file or directory)'
+[guest]# /usr/bin/passwd -S labtester
+Error from event: The operation couldn’t be completed. (OSStatus error -2700.)
+Guest agent command failed, error was 'Failed to execute child process â/usr/bin/passwd -S labtesterâ (No such file or directory)'
+[guest]# /usr/sbin/usermod -U labtester
+Error from event: The operation couldn’t be completed. (OSStatus error -2700.)
+Guest agent command failed, error was 'Failed to execute child process â/usr/sbin/usermod -U labtesterâ (No such file or directory)'
+[guest]# /usr/bin/passwd -S labtester
+Error from event: The operation couldn’t be completed. (OSStatus error -2700.)
+Guest agent command failed, error was 'Failed to execute child process â/usr/bin/passwd -S labtesterâ (No such file or directory)'
+[guest]# usermod -L labtester; passwd -S labtester
+
+[guest]# usermod -U labtester; passwd -S labtester
+
+[guest]# usermod -L labtester
+[guest]# passwd -S labtester
+labtester L 2026-10-01 0 99999 7 -1
+[guest]# usermod -U labtester; passwd -S labtester
+labtester P 2026-10-01 0 99999 7 -1
