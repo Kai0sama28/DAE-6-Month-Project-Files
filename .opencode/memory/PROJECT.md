@@ -8,7 +8,47 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest (2026-10-13, 2nd): Parrot Security 7.4 (arm64) VM imported into UTM's library.** Source
+**Latest (2026-10-19, 2nd): New deliverable `incident_response_1/Incident Detection and Analysis.md`
+written** (Incident Detection and Analysis rubric; user chose placement `incident_response_1/` and
+the "Kali as Parrot stand-in" strategy). 494 lines / 41 KB. Structure: rubric coverage table with
+an interpretation note (brief's "host ↔ Parrot OS" mapped to three real streams — raw host auth,
+Parrot-role system/FIM/audit from stand-in agent 002, central Wazuh rules — both endpoint roles are
+the same machine because the attack is self-generated, caveat A.11a; true cross-machine correlation
+pending A1/A2) · §1 deviations table · §2 methodology: taught 7-phase method (NIST SP 800-61 +
+ATT&CK + Diamond + D1-D7, from Threat_Detection §4) + reasoning discipline (H1-H3, disprove-first,
+evidence rules, stop conditions) + **findings F1-F8** for the Parrot-role (Kali) stream + **macOS
+section honestly EMPTY** (no agent — methodology/queries documented, closes with A7) · §3 worked
+investigation `SOC-CASE-2026-0142`: 3-stream correlation diagram + table, **16-row timeline T0-T15**
+(09-30 prior wave → rule 11 early warning 17:38:44 → 5402 17:46:11 → 61×5760 burst → 40112 success
+17:50:09.931 firedtimes 614 → 71 ms session → other-connections-keep-firing 17:50:11-13 → 8 benign
+post-window docs), **10-step alert-validation process V1-V10** (logtest chain, firedtimes-vs-index
+614/61 + 92/2 counting trap, 5-day disproof query, srcip==agent.ip self-generated check, FIM
+attribution, control case Run1-vs-Run2, validation-BEFORE-scoring), worked severity score
+(I2/S1/U2 → Medium → D3 +1 → High → D5 cap) · §4 **3-incident classification** with template §A.9
+factor anchors: INC-1 brute force High (2/1/2, override), INC-2 Windows 7 CVEs + SCA 27% Medium
+(1/2/2, no override — with a recorded challenge note that U3→High was arguable), INC-3 /etc/shadow
+FIM→authorised Low (1/1/1) + the naive-vs-validated scoring contrast (naive I3=High vs attributed
+I1=Low) · §5 implications register I.1-I.8 (incl. macOS=SIEM-host unmonitored blind spot,
+journald-only scope bound, 100030/31/32 pending live fire) · §6 screenshots + reproduction-query
+pointer (Threat_Detection §5.9) · §7 limitations L1-L8 + actions. Screenshot captions for the two
+incident_response_1 PNGs are filename-derived (flagged for verification). NOT committed.
+
+**Previous (2026-10-19): New deliverable `incident_response_1/IR Environment Setup.md` written**
+(IR Environment Setup rubric; folder git-tracked as lowercase `incident_response_1/` — it now has
+content, superseding the 2026-10-13 "empty folder" note). Structure: rubric coverage/status table
+(done vs. pending per line), deviation statement (UTM instead of VirtualBox on the arm64 Mac;
+Wazuh central on the macOS host instead of inside Parrot — capabilities preserved), architecture
+diagram, Wazuh install evidence, 3-agent fleet evidence + gotchas, Parrot agent + log-collection
+configs (prepared, PENDING first boot), the 3 deployed rules 100030-100032 as parameter tables with
+verification status (loaded ✅ / live end-to-end firing ⏳), Wireshark capture-vs-display-filter
+section (macOS verified ✅ / Parrot install steps ⏳), Volatility as explicitly PENDING with planned
+commands, macOS+macOS-Parrot ingestion section (**macOS host agent gap flagged as L5**), evidence
+screenshot index (3 PNGs in `incident_response_1/` — captions derived from filenames, verify
+before submission), limitations L1-L9, action list A1-A8 in build order. Honest gaps: no macOS
+agent, Volatility not installed, Parrot not booted, rules not yet fired live. NOT yet committed.
+`local_rules.xml` still lives outside the repo (action A5: copy it in for git reviewability).
+
+**Previous (2026-10-13, 2nd): Parrot Security 7.4 (arm64) VM imported into UTM's library.** Source
 was `~/Downloads/Parrot-security-7.4_arm64.utm.tar` (13.8 GB) — a pre-built UTM **bundle**, NOT
 an ISO (must `tar -xf` it; do not attach as a disk). Extracted, right-sized for the 16 GB host
 (**RAM 8192 -> 4096, CPU 8 -> 4** in `config.plist`; stock config requested 8 GB, which would
@@ -437,6 +477,30 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-10-19 (2nd)** — Wrote `incident_response_1/Incident Detection and Analysis.md` (rubric:
+  Parrot+macOS log analysis, 1 suspicious-login investigation with host↔Parrot correlation +
+  timeline + alert validation, 3-incident severity-matrix classification, methodology +
+  implications). User decisions: placement `incident_response_1/`; handle missing Parrot/macOS data
+  by "write now using Kali agent 002 as the Parrot stand-in, documented as a deviation" (macOS
+  section = methodology + zero findings, gap until A7). Key content: findings F1-F8, timeline
+  T0-T15, validation steps V1-V10, and classifications INC-1 High (2/1/2+D3 override) / INC-2
+  Medium (1/2/2 — Windows 7 GIMP CVEs + CIS SCA 27% unchanged 12 days) / INC-3 Low (1/1/1 — shadow
+  FIM attributed to passwd, FP3) using the exact template §A.9 factor anchors (each 1-4, highest
+  factor wins). Reused verified case facts only (firedtimes 614/92, 61 indexed, 71 ms, 17:46:11
+  +2m15s, rule 11 at 17:38:44, 106-alert mix, Run-1 control case); no live API access from the
+  authoring box — figures from the 10-05 verified run, re-run query set after lab changes. Journal
+  edit only — not yet committed.
+- **2026-10-19** — Wrote `incident_response_1/IR Environment Setup.md` for the IR Environment Setup
+  rubric, mapping each rubric line to the real (differing) environment with explicit done/pending
+  status: Wazuh-on-macOS-Docker vs. brief's "Parrot/VirtualBox" (deviation statement + why), Parrot
+  7.4 staged in UTM, fleet evidence for agents 002/007/008, Parrot localfile/syscheck config
+  prepared, rules **100030/100031/100032** documented as parameter tables (loaded & API-verified,
+  live firing still ⏳), Wireshark macOS capture/display-filter evidence (verified `dumpcap -i lo0
+  -f icmp` + `tshark -Y icmp`), Volatility explicitly PENDING with planned commands, and the
+  **macOS-host-agent gap** (L5) flagged with a plan to close it. Limitations L1-L9 + actions A1-A8
+  (boot Parrot -> agent -> logs -> live rule test -> Wireshark on Parrot -> copy local_rules.xml
+  into repo -> Volatility -> macOS agent -> update doc). Also superseded the stale 10-13 note that
+  `incident_response_1/` was empty. Journal edit only — not yet committed.
 - **2026-10-13 (3rd)** — Deployed **3 custom Wazuh rules** to the Docker manager via a new
   bind-mount (`config/wazuh_cluster/rules/local_rules.xml` -> `/var/ossec/etc/rules/
   local_rules.xml:ro`, added to `docker-compose.yml`). IDs **100030** (SSH brute-force success,
