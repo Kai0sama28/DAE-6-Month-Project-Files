@@ -33,8 +33,9 @@ EDR are schema-matched mocks, swappable for real Okta/CrowdStrike later.
 | `apis/edr/` | FastAPI mock of a CrowdStrike-shaped EDR service with synthetic telemetry |
 | `database/` | SQLAlchemy engine helper (SQLite default, Postgres via `DATABASE_URL`) |
 | `agent/` | **Background triage agent**: indexer watcher, settle window, deterministic correlation, timeline, LLM narrative, Markdown + HTML reports, desktop notification |
-| `frontend/` | Streamlit dashboard (week 11; placeholder) |
-| `tests/` | Unit + end-to-end integration tests (71 passing) |
+| `services/triage_api/` | FastAPI control plane: queues investigations, exposes reports/jobs, records analyst decisions |
+| `frontend/` | Streamlit dashboard for case review, report viewing, and the approval gate |
+| `tests/` | Unit + end-to-end integration tests (85 passing) |
 | `scripts/` | One-shot tools: seed data, test the live Wazuh connection |
 | `docs/` | Design and architecture documentation |
 
@@ -75,6 +76,35 @@ Two rules shape the whole design:
   approves. The report is stamped `DRAFT — requires analyst review`.
 
 See `docs/ARCHITECTURE.md` §9–16 for the full design.
+
+## Triage API + Dashboard
+
+The control plane wraps `agent.runner.investigate_now()` without changing the
+agent. HTTP requests only queue work; one background worker runs the existing
+LangGraph investigation and stores the report path.
+
+```bash
+cd ai-agentic-soc
+venv/bin/python -m services.triage_api      # http://127.0.0.1:8080 (loopback only)
+venv/bin/streamlit run frontend/app.py --server.address 127.0.0.1
+```
+
+Endpoints:
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/v1/health` | Worker and queue health |
+| `POST` | `/api/v1/investigations` | Queue `{"alert_id": "...", "force": false}` |
+| `GET` | `/api/v1/jobs/{job_id}` | Poll investigation status and result |
+| `GET` | `/api/v1/cases` | List generated reports parsed from `reports/` |
+| `GET` | `/api/v1/cases/{id}` | Report metadata + Markdown |
+| `GET` | `/api/v1/cases/{id}/report?format=html` | Raw Markdown or standalone HTML report |
+| `POST` | `/api/v1/cases/{id}/decision` | Record `approved` / `rejected` |
+
+Jobs are in-memory and the queue uses a single worker because the existing
+agent state file assumes one writer. Do not run the daemon and the API against
+the same state file at the same time. Neither the API nor the dashboard has
+authentication; keep both on loopback or put them behind an authenticated proxy.
 
 ## Quick Start
 
@@ -131,6 +161,6 @@ pytest
 - **Weeks 1–4 (done here):** alert schema + normalizer, identity API, Wazuh connector, EDR API, end-to-end API integration.
 - **Weeks 5–7 (done here):** LangGraph supervisor agent, tool-calling to the three pillars, correlation + MITRE mapping.
 - **Weeks 8–11 (done here):** background triage agent, report synthesis, desktop notification, deterministic correlation with burst delineation.
-- **Weeks 11–12:** Streamlit dashboard, human-in-the-loop approval gate, labeled evaluation, docs + portfolio case study.
+- **Weeks 11–12 (in progress):** Streamlit dashboard + FastAPI control plane scaffolded; next are timeline/MITRE views, TheHive write-back, labeled evaluation, docs + portfolio case study.
 
 Project-level design decisions and the change log live in `docs/`.

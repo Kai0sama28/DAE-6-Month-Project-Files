@@ -1,0 +1,801 @@
+INCIDENT RESPONSE AND CONTAINMENT — LIVE DEMONSTRATION TRANSCRIPT
+================================================================
+Case:            SOC-CASE-2026-0142 (training re-run)
+Date:            2026-10-26
+Operator:        Kyrell Green
+Target guest:    Kali Linux 2023 (UTM/QEMU, aarch64) — Wazuh agent 002
+                 Documented Parrot OS stand-in (same Debian toolchain)
+Guest address:   192.168.64.3/24  (eth0; gateway/host bridge100 = 192.168.64.1)
+Hypervisor:      UTM on macOS (Apple Silicon, 16 GB)
+Access method:   /Applications/UTM.app/Contents/MacOS/utmctl exec "Kali Linux 2023" --cmd ...
+                 (QEMU guest agent, runs as root, non-interactive)
+Host-side probes: macOS host -> guest ping / nc, and utmctl list status
+Evidence root:   /home/kali/evidence/SOC-CASE-2026-0142/
+                 rerun-2026-10-26/     (Phase 3)
+                 phase4-2026-10-26/    (Phase 4)
+Raw logs copied into phase4-2026-10-26/containment/ on the guest.
+
+RUN TIMELINE (UTC, 2026-10-26)
+------------------------------
+15:50–15:52  Phase 1 first pass: firewall DROP + interface down/up
+16:00:50–16:01:17  Phase 2: quarantine segmentation policy, validation, restore
+16:17:15–16:17:34  Phase 3: file-system / network / memory evidence preservation
+16:21:15–16:24:38  Phase 4: pre-capture, L1, L2, L3 (suspend/resume), service/account, restore
+16:26:41–16:26:52  Phase 1 clean re-run for the firewall hit-counter record
+
+NOTES ON HONESTY
+----------------
+* "L1/L2/L3/L4" follow the playbook in Incident Response and Containment.md §4.2.
+* Every state-changing step was followed by an independent read (iptables -S, ip link,
+  passwd -S, systemctl, host ping/nc). The utmctl guest agent intermittently returns an
+  EMPTY string for commands that take longer than ~0.1 s; long steps were run detached
+  with marker files and polled. See GOTCHAS at the end.
+* All containment was reversed. Final state at 16:24:38Z and 16:26:52Z was the baseline:
+  iptables/ip6tables all ACCEPT with no rules; eth0 UP with 192.168.64.3/24; ssh
+  active+enabled; labtester unlocked (P).
+
+================================================================
+PHASE 1 — FIREWALL DROP RULE (ICMP)  [clean re-run 16:26:41Z]
+================================================================
+Guest log, /tmp/ir_phase1_rerun.out:
+
+UTC START: 2026-10-26T16:26:41Z
+HOST: kali  IFACE: eth0  IP: 192.168.64.3/24
+================ PHASE 1: FIREWALL DROP RULE (ICMP) ================
+--- baseline ---
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+
+--- install ICMP DROP for management host 192.168.64.1 ---
+iptables -I INPUT 1 -s 192.168.64.1 -p icmp --icmp-type echo-request -j DROP
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+-A INPUT -s 192.168.64.1/32 -p icmp -m icmp --icmp-type 8 -j DROP
+FW_READY marker written; waiting 8s for host-side ping test
+--- counters after host probes ---
+Chain INPUT (policy ACCEPT 214 packets, 12789 bytes)
+num   pkts bytes target     prot opt in     out     source               destination
+1        3   252 DROP       1    --  *      *       192.168.64.1         0.0.0.0/0            icmptype 8
+
+--- remove rule, restore baseline ---
+iptables -D INPUT 1
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+--- final baseline ---
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+UTC END: 2026-10-26T16:26:52Z
+DONE
+
+Host-side probe while the rule was installed:
+  $ ping -c 3 192.168.64.3
+  3 packets transmitted, 0 packets received, 100.0% packet loss
+
+Host-side probe after the rule was removed:
+  $ ping -c 3 192.168.64.3
+  3 packets transmitted, 3 packets received, 0.0% packet loss
+  round-trip min/avg/max/stddev = 0.810/0.835/0.861/0.021 ms
+
+Result: DROP rule fired (3 packets / 252 bytes), traffic blocked 100%, rule removed,
+baseline restored 0% loss. The first pass at 15:50Z produced the same 100% -> 0% result
+(2 packets / 168 bytes in that pass).
+
+================================================================
+PHASE 2 — QUARANTINE SEGMENTATION (IPv4 + IPv6)  [16:00:50–16:01:17Z]
+================================================================
+Guest log, /tmp/ir_phase2.out:
+
+UTC START: 2026-10-26T16:00:50Z
+HOST: kali  IFACE: eth0  IP: 192.168.64.3/24
+
+================ BASELINE (before policy) ================
+--- iptables -S ---
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+--- ip6tables -S ---
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+--- baseline reachability ---
+Kali -> host:1514  (Wazuh agent): OPEN (allowed)
+Kali -> host:9200  (indexer): OPEN (allowed)
+Kali -> host:55000 (API): OPEN (allowed)
+Kali -> host:443   (dashboard): OPEN (allowed)
+Kali -> gateway ICMP: OK
+Kali -> internet IPv4: REACHABLE
+Kali -> internet IPv6: BLOCKED
+
+================ APPLY SEGMENTATION POLICY ================
+[IPv4] inbound default-deny, management allow, egress local-only
+[IPv6] default-deny + ND/link-local/ULA only
+
+================ APPLIED STATE ================
+-P INPUT DROP
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -s 192.168.64.1/32 -p tcp -m tcp --dport 22 -j ACCEPT
+-A OUTPUT -o lo -j ACCEPT
+-A OUTPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A OUTPUT -d 192.168.64.1/32 -p tcp -m multiport --dports 9200,55000,443,9000,5636 -j DROP
+-A OUTPUT -d 192.168.64.0/24 -j ACCEPT
+-A OUTPUT -j DROP
+--- INPUT counters ---
+Chain INPUT (policy DROP 0 packets, 0 bytes)
+num   pkts bytes target     prot opt in     out     source               destination
+1        0     0 ACCEPT     0    --  lo     *       0.0.0.0/0            0.0.0.0/0
+2        0     0 ACCEPT     0    --  *      *       0.0.0.0/0            0.0.0.0/0            ctstate RELATED,ESTABLISHED
+3        0     0 ACCEPT     6    --  *      *       192.168.64.1         0.0.0.0/0            tcp dpt:22
+--- OUTPUT counters ---
+Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)
+num   pkts bytes target     prot opt in     out     source               destination
+1        0     0 ACCEPT     0    --  *      lo      0.0.0.0/0            0.0.0.0/0
+2        0     0 ACCEPT     0    --  *      *       0.0.0.0/0            0.0.0.0/0            ctstate RELATED,ESTABLISHED
+3        0     0 DROP       6    --  *      *       0.0.0.0/0            192.168.64.1         multiport dports 9200,55000,443,9000,5636
+4        0     0 ACCEPT     0    --  *      *       0.0.0.0/0            192.168.64.0/24
+5        0     0 DROP       0    --  *      *       0.0.0.0/0            0.0.0.0/0
+-P INPUT DROP
+-P FORWARD ACCEPT
+-P OUTPUT DROP
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -p ipv6-icmp -m icmp6 --icmpv6-type 133 -j ACCEPT
+-A INPUT -p ipv6-icmp -m icmp6 --icmpv6-type 134 -j ACCEPT
+-A INPUT -p ipv6-icmp -m icmp6 --icmpv6-type 135 -j ACCEPT
+-A INPUT -p ipv6-icmp -m icmp6 --icmpv6-type 136 -j ACCEPT
+-A OUTPUT -o lo -j ACCEPT
+-A OUTPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A OUTPUT -d fd7a:dcb7:ecf0:79c9::/64 -j ACCEPT
+-A OUTPUT -d fe80::/10 -j ACCEPT
+-A OUTPUT -p ipv6-icmp -m icmp6 --icmpv6-type 133 -j ACCEPT
+-A OUTPUT -p ipv6-icmp -m icmp6 --icmpv6-type 134 -j ACCEPT
+-A OUTPUT -p ipv6-icmp -m icmp6 --icmpv6-type 135 -j ACCEPT
+-A OUTPUT -p ipv6-icmp -m icmp6 --icmpv6-type 136 -j ACCEPT
+
+================ VALIDATION (after policy) ================
+Kali -> host:1514  (Wazuh agent, expected ALLOW): OPEN (allowed)
+Kali -> host:9200  (indexer, expected BLOCK): BLOCKED (drop/timeout)
+Kali -> host:55000 (API, expected BLOCK): BLOCKED (drop/timeout)
+Kali -> host:443   (dashboard, expected BLOCK): BLOCKED (drop/timeout)
+Kali -> gateway ICMP: OK (expected)
+Kali -> internet IPv4: BLOCKED (expected)
+Kali -> internet IPv6: BLOCKED (expected)
+
+--- final counters ---
+Chain INPUT (policy DROP 1 packets, 40 bytes)
+num   pkts bytes target     prot opt in     out     source               destination
+1        0     0 ACCEPT     0    --  lo     *       0.0.0.0/0            0.0.0.0/0
+2        6   356 ACCEPT     0    --  *      *       0.0.0.0/0            0.0.0.0/0            ctstate RELATED,ESTABLISHED
+3        0     0 ACCEPT     6    --  *      *       192.168.64.1         0.0.0.0/0            tcp dpt:22
+Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)
+num   pkts bytes target     prot opt in     out     source               destination
+1        0     0 ACCEPT     0    --  *      lo      0.0.0.0/0            0.0.0.0/0
+2        4   209 ACCEPT     0    --  *      *       0.0.0.0/0            0.0.0.0/0            ctstate RELATED,ESTABLISHED
+3        6   360 DROP       6    --  *      *       0.0.0.0/0            192.168.64.1         multiport dports 9200,55000,443,9000,5636
+4        2   144 ACCEPT     0    --  *      *       0.0.0.0/0            192.168.64.0/24
+5       17 28160 DROP       0    --  *      *       0.0.0.0/0            0.0.0.0/0
+UTC END: 2026-10-26T16:01:01Z
+DONE
+
+Host-side probes during the policy:
+  $ ping -c 2 192.168.64.3
+  2 packets transmitted, 0 packets received, 100.0% packet loss
+  $ nc -z -v -w 2 192.168.64.3 22
+  Connection to 192.168.64.3 port 22 [tcp/ssh] succeeded!
+
+Restore log, /tmp/ir_phase2_restore.out:
+
+UTC START: 2026-10-26T16:01:17Z
+--- flush + reset policies ---
+--- iptables -S (restored) ---
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+--- ip6tables -S (restored) ---
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+--- connectivity restored ---
+Kali -> host:1514  (Wazuh agent): OPEN
+Kali -> host:9200  (indexer): OPEN
+Kali -> host:55000 (API): OPEN
+Kali -> host:443   (dashboard): OPEN
+Kali -> gateway ICMP: OK
+Kali -> internet IPv4: REACHABLE
+UTC END: 2026-10-26T16:01:17Z
+DONE
+
+Host-side probe after restore:
+  2 packets transmitted, 2 packets received, 0.0% packet loss
+
+Result: segmentation policy isolated the guest from the internet and from the SIEM
+control plane (9200/55000/443/9000/5636) while keeping the Wazuh agent port 1514 and
+management SSH from the host working. Counters prove the drops: control-plane 6 pkts /
+360 B, upstream 17 pkts / 28 160 B, INPUT policy 1 pkt / 40 B.
+
+================================================================
+PHASE 3 — EVIDENCE PRESERVATION  [16:17:15–16:17:34Z]
+================================================================
+Guest log, /tmp/ir_phase3.out:
+
+UTC START: 2026-10-26T16:17:15Z
+HOST: kali  IFACE: eth0  IP: 192.168.64.3/24
+CASE: /home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26
+
+================ 1. FILE SYSTEM ARTIFACTS ================
+--- original hash (before copy) ---
+d66440fcd129fd6f4261f64a933fdfdd59230b66d555c961ee7cd818ad7642be  /etc/passwd
+--- copy with metadata preserved ---
+d66440fcd129fd6f4261f64a933fdfdd59230b66d555c961ee7cd818ad7642be  ./passwd
+--- integrity comparison ---
+CMP: IDENTICAL
+--- metadata ---
+/etc/passwd | 3209 bytes | mtime 2026-10-20 10:58:32.564489686 -0700
+./passwd | 3209 bytes | mtime 2026-10-20 10:58:32.564489686 -0700
+--- journal export (journald is this host's log store) ---
+d9af4e2729de567bfb912f182678b8d4d9da7bad9475a53b5a81d0faa1cd6bb4  journal_tail_60.txt
+60 journal_tail_60.txt
+
+================ 2. NETWORK TRAFFIC CAPTURE ================
+tcpdump pid=1247077
+TCPDUMP_READY (waiting 12s for host-generated ICMP)
+--- tcpdump stderr/log ---
+tcpdump: listening on eth0, link-type EN10MB (Ethernet), snapshot length 262144 bytes
+6 packets captured
+8 packets received by filter
+0 packets dropped by kernel
+--- decoded capture ---
+reading from file demo_icmp.pcap, link-type EN10MB (Ethernet), snapshot length 262144
+09:17:15.796616 IP 192.168.64.1 > 192.168.64.3: ICMP echo request, id 56622, seq 0, length 64
+09:17:15.796677 IP 192.168.64.3 > 192.168.64.1: ICMP echo reply, id 56622, seq 0, length 64
+09:17:16.801921 IP 192.168.64.1 > 192.168.64.3: ICMP echo request, id 56622, seq 1, length 64
+09:17:16.801966 IP 192.168.64.3 > 192.168.64.1: ICMP echo reply, id 56622, seq 1, length 64
+09:17:26.056702 IP 192.168.64.1 > 192.168.64.3: ICMP echo request, id 2095, seq 0, length 64
+09:17:26.056791 IP 192.168.64.3 > 192.168.64.1: ICMP echo reply, id 2095, seq 0, length 64
+--- capinfos ---
+File name:           demo_icmp.pcap
+File type:           Wireshark/tcpdump/... - pcap
+File encapsulation:  Ethernet
+File timestamp precision:  microseconds (6)
+Packet size limit:   file hdr: 262144 bytes
+Number of packets:   6
+File size:           708 bytes
+Data size:           588 bytes
+Capture duration:    10.260175 seconds
+First packet time:   2026-10-26 09:17:15.796616
+Last packet time:    2026-10-26 09:17:26.056791
+Data byte rate:      57 bytes/s
+Data bit rate:       458 bits/s
+Average packet size: 98.00 bytes
+Average packet rate: 0 packets/s
+SHA256:              88a5348874c7fa8ab6e34533a4933e9e1cfcc7dd8ff4326a696ea6a26b72fd11
+RIPEMD160:           a0ed8c80e48c799dfeeb9c458f27e4775d58e3be
+SHA1:                9822b659e1bc320e64622a7f6ef714f1f668d675
+Strict time order:   True
+Number of interfaces in file: 1
+Interface #0 info:
+                     Encapsulation = Ethernet (1 - ether)
+                     Capture length = 262144
+                     Time precision = microseconds (6)
+                     Time ticks per second = 1000000
+                     Number of stat entries = 0
+                     Number of packets = 6
+--- tshark display filter (first 5 ICMP) ---
+1	192.168.64.1	192.168.64.3	8	0
+2	192.168.64.3	192.168.64.1	0	0
+3	192.168.64.1	192.168.64.3	8	0
+4	192.168.64.3	192.168.64.1	0	0
+5	192.168.64.1	192.168.64.3	8	0
+--- hash ---
+88a5348874c7fa8ab6e34533a4933e9e1cfcc7dd8ff4326a696ea6a26b72fd11  demo_icmp.pcap
+-rw-r--r-- 1 tcpdump tcpdump 708 Oct 26 09:17 demo_icmp.pcap
+
+================ 3. BASIC MEMORY DUMP ================
+core_pattern=core
+ulimit -c=unlimited
+target pid=1247224 (sleep)
+/tmp/ir_phase3.sh: line 64: 1247224 Aborted                 (core dumped) nohup sleep 600 > /dev/null 2>&1
+--- core artifact ---
+-rw------- 1 root root 400K Oct 26 09:17 core
+core: ELF 64-bit LSB core file, ARM aarch64, version 1 (SYSV), SVR4-style, from 'sleep 600', real uid: 0, effective uid: 0, real gid: 0, effective gid: 0, execfn: '/usr/bin/sleep', platform: 'aarch64'
+91d7ed51785937fd0d11917f827bb26b4b64418d2c08ffb226e5fd9dc8864af3  core
+--- process is gone (expected) ---
+terminated by SIGABRT
+
+================ 4. INTEGRITY MANIFEST (hashdeep) ================
+--- manifest (/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/../rerun-2026-10-26_hashdeep.txt) ---
+%%%% HASHDEEP-1.0
+%%%% size,md5,sha256,filename
+## Invoked from: /home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26
+## # hashdeep -r /home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26
+##
+708,30dea4b12653d7ac9ae03d26a2ee4f57,88a5348874c7fa8ab6e34533a4933e9e1cfcc7dd8ff4326a696ea6a26b72fd11,/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/net/demo_icmp.pcap
+81,0b692dd9570df0a3678c2832c4bb7680,18bfa13fa108d8d939f001de9ee3aac441aeb0b79ce07f2309d9a4710f3679ab,/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/net/demo_icmp.pcap.sha256
+78,d3581d673615d1d2927e280de2a92c9a,61b0e717e3e07a749d9b7acfa5fb8a91dfc9eb3058c571afe1ad7a65cd88e314,/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/fs/passwd.orig.sha256
+86,a086171ba3544e02e29b0c6aa098123d,4f5b05932ae8b56db7e529c0011df7a88dc8a64fea9513f91b24759055518db4,/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/fs/journal_tail_60.txt.sha256
+556,c7398db0f770adef86bfbe4f204ca02b,f7cb7567dab6abc7b6d0d6d364aaf6182495a22815ab704f9a417ed6d5462db4,/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/net/demo_icmp.pcap.readable.txt
+75,b7a17b688f0c86ffca3f2deb49dee47f,28833c73c1acaa258655f010e686e6e4214d6b6f8767c86d5e21626ad2286198,/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/fs/passwd.copy.sha256
+71,d4ab8f7dba765439260d0dd53d080b61,cf74f65fa48bea9ba983e53820025b1d06acdb5a858e3fc2d78244584938152f,/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/mem/core.sha256
+3209,1f0f35cffafc81d35eb072f4d9e5693c,d66440fcd129fd6f4261f64a933fdfdd59230b66d555c961ee7cd818ad7642be,/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/fs/passwd
+17876,60a652bc2023cd81e090949c9bf6ba39,d9af4e2729de567bfb912f182678b8d4d9da7bad9475a53b5a81d0faa1cd6bb4,/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/fs/journal_tail_60.txt
+409600,104b744d1961fc5a6c4bfe0d37037806,91d7ed51785937fd0d11917f827bb26b4b64418d2c08ffb226e5fd9dc8864af3,/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/mem/core
+--- audit against manifest ---
+hashdeep: Audit passed
+
+================ 5. EVIDENCE INVENTORY ================
+/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/fs/journal_tail_60.txt | 17876 bytes
+/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/fs/journal_tail_60.txt.sha256 | 86 bytes
+/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/fs/passwd | 3209 bytes
+/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/fs/passwd.copy.sha256 | 75 bytes
+/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/fs/passwd.orig.sha256 | 78 bytes
+/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/mem/core | 409600 bytes
+/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/mem/core.sha256 | 71 bytes
+/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/net/demo_icmp.pcap | 708 bytes
+/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/net/demo_icmp.pcap.readable.txt | 556 bytes
+/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/net/demo_icmp.pcap.sha256 | 81 bytes
+--- final SHA-256 inventory ---
+18bfa13fa108d8d939f001de9ee3aac441aeb0b79ce07f2309d9a4710f3679ab  .../net/demo_icmp.pcap.sha256
+28833c73c1acaa258655f010e686e6e4214d6b6f8767c86d5e21626ad2286198  .../fs/passwd.copy.sha256
+4f5b05932ae8b56db7e529c0011df7a88dc8a64fea9513f91b24759055518db4  .../fs/journal_tail_60.txt.sha256
+61b0e717e3e07a749d9b7acfa5fb8a91dfc9eb3058c571afe1ad7a65cd88e314  .../fs/passwd.orig.sha256
+88a5348874c7fa8ab6e34533a4933e9e1cfcc7dd8ff4326a696ea6a26b72fd11  .../net/demo_icmp.pcap
+91d7ed51785937fd0d11917f827bb26b4b64418d2c08ffb226e5fd9dc8864af3  .../mem/core
+cf74f65fa48bea9ba983e53820025b1d06acdb5a858e3fc2d78244584938152f  .../mem/core.sha256
+d66440fcd129fd6f4261f64a933fdfdd59230b66d555c961ee7cd818ad7642be  .../fs/passwd
+d9af4e2729de567bfb912f182678b8d4d9da7bad9475a53b5a81d0faa1cd6bb4  .../fs/journal_tail_60.txt
+f7cb7567dab6abc7b6d0d6d364aaf6182495a22815ab704f9a417ed6d5462db4  .../net/demo_icmp.pcap.readable.txt
+
+UTC END: 2026-10-26T16:17:34Z
+DONE
+
+================================================================
+PHASE 4 — FULL CONTAINMENT DRILL  [16:21:15–16:24:38Z]
+================================================================
+
+4.0 PRE-DRILL VOLATILE CAPTURE (16:21:15–16:21:19Z)
+Guest log, /tmp/ir_phase4_pre.out:
+
+UTC START: 2026-10-26T16:21:15Z
+CASE: /home/kali/evidence/SOC-CASE-2026-0142/phase4-2026-10-26
+
+================ PRE-DRILL VOLATILE CAPTURE ================
+--- host ---
+kali
+Linux kali 6.3.0-kali1-arm64 #1 SMP Debian 6.3.7-1kali1 (2023-06-29) aarch64 GNU/Linux
+--- interfaces ---
+lo               UNKNOWN        127.0.0.1/8 ::1/128
+eth0             UP             192.168.64.3/24 fd7a:dcb7:ecf0:79c9:6fc2:f31e:7ba5:5f62/64 fd7a:dcb7:ecf0:79c9:e8f0:2fff:fe00:113a/64 fe80::e8f0:2fff:fe00:113a/64
+--- routes ---
+default via 192.168.64.1 dev eth0 proto dhcp src 192.168.64.3 metric 100
+192.168.64.0/24 dev eth0 proto kernel scope link src 192.168.64.3 metric 100
+--- listening sockets ---
+Netid State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess
+tcp   LISTEN 0      128          0.0.0.0:22        0.0.0.0:*    users:(("sshd",pid=620,fd=3))
+tcp   LISTEN 0      128             [::]:22           [::]:*    users:(("sshd",pid=620,fd=4))
+--- top memory processes ---
+USER         PID %CPU %MEM     VSZ    RSS TTY      STAT START   TIME COMMAND
+root      779286  0.0  9.2 1536576 369496 pts/3  Sl+  Oct25   0:46 wireshark
+root         636  0.2  5.1  693808 205720 tty7    Ssl+ Oct24   6:48 /usr/lib/xorg/Xorg :0 -seat seat0 -auth /var/run/lightdm/root/:0 -nolisten tcp vt7 -novtswitch
+kali        1987  0.0  3.5  704508 143704 ?      Sl   Oct24   0:07 xfdesktop --display :0.0 --sm-client-id 29ae6749c-9d3b-49dd-b4fa-b19fca6d74aa
+lightdm  1004973  0.0  2.5  819012 104236 ?     Ssl  01:42   0:18 /usr/sbin/lightdm-gtk-greeter
+kali      747711  0.0  2.3  508692  95992 ?      Sl   Oct25   0:02 /usr/bin/qterminal
+root      779026  0.0  2.3  508644  95872 ?      Sl   Oct25   0:01 /usr/bin/x-terminal-emulator
+kali        1940  0.0  2.3  728148  93952 ?      Sl   Oct24   0:55 xfwm4 --display :0.0 --sm-client-id 226853a5e-bff1-409b-9491-d7f459e343f6
+root     1004897  0.0  2.3  506348  93552 tty8    Ssl+ 01:42   0:23 /usr/lib/xorg/Xorg :1 -seat seat0 -auth /var/run/lightdm/root/:1 -nolisten tcp vt8 -novtswitch
+kali        1976  0.0  1.3  505148  52300 ?      Sl   Oct24   0:22 xfce4-panel --display :0.0 --sm-client-id 2b1fb269d-c093-4cce-91b5-e74141248346
+kali        2091  0.0  1.1  453416  47024 ?      Sl   Oct24   0:06 /usr/bin/python3 /usr/bin/blueman-applet
+root         943  0.0  1.1  868224  44848 ?      Sl   Oct24   0:49 /var/ossec/bin/wazuh-modulesd
+kali        1991  0.0  1.0  470684  40312 ?      Sl   Oct24   0:10 /usr/lib/aarch64-linux-gnu/xfce4/panel/wrapper-2.0 ... libwhiskermenu.so
+kali        2039  0.0  0.9  468232  39564 ?      Ssl  Oct24   0:03 /usr/lib/aarch64-linux-gnu/xfce4/notifyd/xfce4-notifyd
+kali        2092  0.0  0.9  637912  39436 ?      Sl   Oct24   0:03 nm-applet
+--- baseline firewall ---
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+
+--- memory dump (kernel core of a test process) ---
+core_pattern=core
+ulimit -c=unlimited
+target pid=1249158 (sleep)
+/tmp/ir_phase4_pre.sh: line 38: 1249158 Aborted                 (core dumped) nohup sleep 600 > /dev/null 2>&1
+-rw------- 1 root root 400K Oct 26 09:21 core
+core: ELF 64-bit LSB core file, ARM aarch64, version 1 (SYSV), SVR4-style, from 'sleep 600', real uid: 0, effective uid: 0, real gid: 0, effective gid: 0, execfn: '/usr/bin/sleep', platform: 'aarch64'
+c5f2e75c7af2f8f72012b47f87103221427b40921901eece9450cf7cc90a3399  core
+
+--- snapshot of process/network state written ---
+d85c2718793b18dcc3d68b4c9f8362df64af05821a8f367d3b355162f9df9b5c  .../phase4-2026-10-26/ip_snapshot.txt
+a84f78f9ef50af084003d51d1863a852618c8cda6edb98181c7e30a3b1516836  .../phase4-2026-10-26/iptables_snapshot.txt
+3f931fb1ba114ae2cabd8eae3e8dd5344024bb2a4cb2be7cb88efb306a0a36ab  .../phase4-2026-10-26/ps_snapshot.txt
+59c6bc6914670964d28bdaf8af9c1a134a24676a1b5c4335b91fc930b2517079  .../phase4-2026-10-26/ss_snapshot.txt
+UTC END: 2026-10-26T16:21:19Z
+DONE
+
+4.1 L1 — SELECTIVE NETWORK BLOCK (16:21:33–16:21:44Z)
+Guest log, /tmp/ir_phase4_l1.out:
+
+UTC START: 2026-10-26T16:21:33Z
+================ L1: SELECTIVE NETWORK BLOCK ================
+--- apply IPv4 inbound default-deny + management allow ---
+--- apply IPv4 egress: local-only, control-plane ports dropped, upstream dropped ---
+--- apply IPv6 default-deny + local/ND allow ---
+
+--- applied state ---
+-P INPUT DROP
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -s 192.168.64.1/32 -p tcp -m tcp --dport 22 -j ACCEPT
+-A OUTPUT -o lo -j ACCEPT
+-A OUTPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A OUTPUT -d 192.168.64.1/32 -p tcp -m multiport --dports 9200,55000,443,9000,5636 -j DROP
+-A OUTPUT -d 192.168.64.0/24 -j ACCEPT
+-A OUTPUT -j DROP
+-P INPUT DROP
+-P FORWARD ACCEPT
+-P OUTPUT DROP
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -p ipv6-icmp -m icmp6 --icmpv6-type 133 -j ACCEPT
+-A INPUT -p ipv6-icmp -m icmp6 --icmpv6-type 134 -j ACCEPT
+-A INPUT -p ipv6-icmp -m icmp6 --icmpv6-type 135 -j ACCEPT
+-A INPUT -p ipv6-icmp -m icmp6 --icmpv6-type 136 -j ACCEPT
+-A OUTPUT -o lo -j ACCEPT
+-A OUTPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A OUTPUT -d fd7a:dcb7:ecf0:79c9::/64 -j ACCEPT
+-A OUTPUT -d fe80::/10 -j ACCEPT
+-A OUTPUT -p ipv6-icmp -m icmp6 --icmpv6-type 133 -j ACCEPT
+-A OUTPUT -p ipv6-icmp -m icmp6 --icmpv6-type 134 -j ACCEPT
+-A OUTPUT -p ipv6-icmp -m icmp6 --icmpv6-type 135 -j ACCEPT
+-A OUTPUT -p ipv6-icmp -m icmp6 --icmpv6-type 136 -j ACCEPT
+--- counters ---
+Chain INPUT (policy DROP 0 packets, 0 bytes)
+num   pkts bytes target     prot opt in     out     source               destination
+1        0     0 ACCEPT     0    --  lo     *       0.0.0.0/0            0.0.0.0/0
+2        0     0 ACCEPT     0    --  *      *       0.0.0.0/0            0.0.0.0/0            ctstate RELATED,ESTABLISHED
+3        0     0 ACCEPT     6    --  *      *       192.168.64.1         0.0.0.0/0            tcp dpt:22
+Chain OUTPUT (policy ACCEPT 328 packets, 65454 bytes)
+num   pkts bytes target     prot opt in     out     source               destination
+1        0     0 ACCEPT     0    --  *      lo      0.0.0.0/0            0.0.0.0/0
+2        0     0 ACCEPT     0    --  *      *       0.0.0.0/0            0.0.0.0/0            ctstate RELATED,ESTABLISHED
+3        0     0 DROP       6    --  *      *       0.0.0.0/0            192.168.64.1         multiport dports 9200,55000,443,9000,5636
+4        0     0 ACCEPT     0    --  *      *       0.0.0.0/0            192.168.64.0/24
+5        0     0 DROP       0    --  *      *       0.0.0.0/0            0.0.0.0/0
+
+--- guest-side validation ---
+Kali -> host:1514 (Wazuh, expected ALLOW): OPEN (allowed)
+Kali -> host:9200 (indexer, expected BLOCK): BLOCKED (drop/timeout)
+Kali -> host:55000 (API, expected BLOCK): BLOCKED (drop/timeout)
+Kali -> host:443 (dashboard, expected BLOCK): BLOCKED (drop/timeout)
+Kali -> gateway ICMP: OK
+Kali -> internet IPv4: BLOCKED (expected)
+
+UTC END: 2026-10-26T16:21:44Z
+L1 POLICY LEFT ACTIVE FOR HOST-SIDE VALIDATION
+DONE
+
+Host-side probes while L1 policy was active:
+  $ ping -c 2 192.168.64.3
+  2 packets transmitted, 0 packets received, 100.0% packet loss
+  $ nc -z -v -w 2 192.168.64.3 22
+  Connection to 192.168.64.3 port 22 [tcp/ssh] succeeded!
+
+L1 restore (guest):
+  iptables -F; iptables -X; policies ACCEPT
+  ip6tables -F; ip6tables -X; policies ACCEPT
+  iptables -S  -> -P INPUT ACCEPT / -P FORWARD ACCEPT / -P OUTPUT ACCEPT
+  ip6tables -S -> -P INPUT ACCEPT / -P FORWARD ACCEPT / -P OUTPUT ACCEPT
+
+Host-side probe after restore:
+  $ ping -c 2 192.168.64.3
+  2 packets transmitted, 2 packets received, 0.0% packet loss
+
+4.2 L2 — FULL LINK DOWN (16:22:35–16:22:47Z)
+Guest log, /tmp/ir_phase4_l2.out:
+
+UTC START: 2026-10-26T16:22:35Z
+================ L2: FULL LINK DOWN (LOGICAL CABLE PULL) ================
+--- before ---
+lo               UNKNOWN        127.0.0.1/8 ::1/128
+eth0             UP             192.168.64.3/24 fd7a:dcb7:ecf0:79c9:6fc2:f31e:7ba5:5f62/64 fd7a:dcb7:ecf0:79c9:e8f0:2fff:fe00:113a/64 fe80::e8f0:2fff:fe00:113a/64
+default via 192.168.64.1 dev eth0 proto dhcp src 192.168.64.3 metric 100
+192.168.64.0/24 dev eth0 proto kernel scope link src 192.168.64.3 metric 100
+--- ip link set eth0 down ---
+--- state while DOWN ---
+lo               UNKNOWN        127.0.0.1/8 ::1/128
+eth0             DOWN           192.168.64.3/24 fd7a:dcb7:ecf0:79c9:e8f0:2fff:fe00:113a/64
+2: eth0: <BROADCAST,MULTICAST> mtu 1500 qdisc fq_codel state DOWN mode DEFAULT group default qlen 1000
+    link/ether ea:f0:2f:00:11:3a brd ff:ff:ff:ff:ff:ff
+LINK_DOWN marker written; waiting 8s for host-side reachability test
+--- ip link set eth0 up ---
+--- state after UP ---
+lo               UNKNOWN        127.0.0.1/8 ::1/128
+eth0             UP             192.168.64.3/24 fe80::e8f0:2fff:fe00:113a/64
+default via 192.168.64.1 dev eth0 proto dhcp src 192.168.64.3 metric 100
+192.168.64.0/24 dev eth0 proto kernel scope link src 192.168.64.3 metric 100
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP mode DEFAULT group default qlen 1000
+    link/ether ea:f0:2f:00:11:3a brd ff:ff:ff:ff:ff:ff
+UTC END: 2026-10-26T16:22:47Z
+DONE
+
+Host-side probe while the link was DOWN:
+  $ ping -c 2 192.168.64.3
+  2 packets transmitted, 0 packets received, 100.0% packet loss
+
+Host-side probe after the link was restored:
+  $ ping -c 3 192.168.64.3
+  3 packets transmitted, 3 packets received, 0.0% packet loss
+  round-trip min/avg/max/stddev = 0.380/0.485/0.547/0.074 ms
+
+4.3 L3 — HYPERVISOR ISOLATION (utmctl suspend/resume, after 16:22:47Z)
+No guest log (the guest is paused). Host-side transcript:
+
+  --- baseline before suspend ---
+  $ ping -c 2 192.168.64.3
+  2 packets transmitted, 2 packets received, 0.0% packet loss
+
+  $ /Applications/UTM.app/Contents/MacOS/utmctl suspend "Kali Linux 2023"
+  suspend rc=0
+
+  --- status while suspended ---
+  $ utmctl list
+  UUID                                 Status   Name
+  3F0E88CB-E8A0-404B-BB93-8B408218114F stopped  ParrotOS 7.4 security Edition
+  9DAA9FE1-45C4-4345-ACB3-72F9EDEEDD85 paused   Kali Linux 2023
+  4FB1781A-C9F6-4D5C-AD47-E77F1ED4F268 stopped  Ubuntu 22.04
+
+  --- host -> kali while suspended ---
+  $ ping -c 2 192.168.64.3
+  2 packets transmitted, 0 packets received, 100.0% packet loss
+
+  $ /Applications/UTM.app/Contents/MacOS/utmctl start "Kali Linux 2023"
+  start rc=0
+
+  --- status after resume ---
+  $ utmctl list
+  9DAA9FE1-45C4-4345-ACB3-72F9EDEEDD85 started  Kali Linux 2023
+
+  --- guest agent responsive ~1s after resume ---
+  $ utmctl exec "Kali Linux 2023" --cmd echo resumed
+  resumed
+
+  --- host -> kali after resume ---
+  $ ping -c 3 192.168.64.3
+  3 packets transmitted, 3 packets received, 0.0% packet loss
+  round-trip min/avg/max/stddev = 0.544/0.608/0.678/0.055 ms
+
+4.4 L3b — SERVICE + ACCOUNT CONTAINMENT (16:24:03–16:24:12Z)
+Guest log, /tmp/ir_phase4_services.out:
+
+UTC START: 2026-10-26T16:24:03Z
+================ L3b: SERVICE + ACCOUNT CONTAINMENT ================
+--- before ---
+ssh active:  active
+ssh enabled: enabled
+account:     labtester P 2026-10-01 0 99999 7 -1
+LISTEN 0      128          0.0.0.0:22        0.0.0.0:*    users:(("sshd",pid=620,fd=3))
+LISTEN 0      128             [::]:22           [::]:*    users:(("sshd",pid=620,fd=4))
+
+--- stop + disable ssh ---
+Synchronizing state of ssh.service with SysV service script with /lib/systemd/systemd-sysv-install.
+Executing: /lib/systemd/systemd-sysv-install disable ssh
+Removed "/etc/systemd/system/sshd.service".
+Removed "/etc/systemd/system/multi-user.target.wants/ssh.service".
+--- lock labtester account ---
+--- state while contained ---
+ssh active:  inactive
+ssh enabled: disabled
+account:     labtester L 2026-10-01 0 99999 7 -1
+no listener on :22
+CONTAINED marker written; waiting 8s for host-side test
+
+--- restore ssh ---
+Synchronizing state of ssh.service with SysV service script with /lib/systemd/systemd-sysv-install.
+Executing: /lib/systemd/systemd-sysv-install enable ssh
+Created symlink /etc/systemd/system/sshd.service -> /lib/systemd/system/ssh.service.
+Created symlink /etc/systemd/system/multi-user.target.wants/ssh.service -> /lib/systemd/system/ssh.service.
+--- unlock labtester account ---
+--- restored state ---
+ssh active:  active
+ssh enabled: enabled
+account:     labtester P 2026-10-01 0 99999 7 -1
+LISTEN 0      128          0.0.0.0:22        0.0.0.0:*    users:(("sshd",pid=1251374,fd=3))
+LISTEN 0      128             [::]:22           [::]:*    users:(("sshd",pid=1251374,fd=4))
+UTC END: 2026-10-26T16:24:12Z
+DONE
+
+Host-side probe while ssh was stopped and labtester locked:
+  $ nc -z -v -w 2 192.168.64.3 22
+  nc: connectx to 192.168.64.3 port 22 (tcp) failed: Connection refused
+  nc exit=1
+
+Host-side probe after restore:
+  $ nc -z -v -w 2 192.168.64.3 22
+  Connection to 192.168.64.3 port 22 [tcp/ssh] succeeded!
+  nc exit=0
+
+4.5 FINAL VERIFICATION + EVIDENCE MANIFEST (16:24:38Z)
+Guest log, /tmp/ir_phase4_final.out:
+
+UTC START: 2026-10-26T16:24:38Z
+================ PHASE 4 FINAL VERIFICATION + EVIDENCE ================
+
+--- FINAL STATE (all containment reversed) ---
+--- iptables ---
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+--- ip6tables ---
+-P INPUT ACCEPT
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+--- ssh ---
+active=active enabled=enabled
+--- labtester ---
+labtester P 2026-10-01 0 99999 7 -1
+--- interfaces ---
+lo               UNKNOWN        127.0.0.1/8 ::1/128
+eth0             UP             192.168.64.3/24 fd7a:dcb7:ecf0:79c9:36c1:403d:c2a8:5408/64 fd7a:dcb7:ecf0:79c9:e8f0:2fff:fe00:113a/64 fe80::e8f0:2fff:fe00:113a/64
+--- routes ---
+default via 192.168.64.1 dev eth0 proto dhcp src 192.168.64.3 metric 100
+192.168.64.0/24 dev eth0 proto kernel scope link src 192.168.64.3 metric 100
+
+--- EVIDENCE INVENTORY ---
+      1758  .../phase4-2026-10-26/containment/host_side_validation.txt
+      3132  .../phase4-2026-10-26/containment/ir_phase4_l1.out
+      1454  .../phase4-2026-10-26/containment/ir_phase4_l2.out
+      4188  .../phase4-2026-10-26/containment/ir_phase4_pre.out
+      1644  .../phase4-2026-10-26/containment/ir_phase4_services.out
+       217  .../phase4-2026-10-26/ip_snapshot.txt
+        51  .../phase4-2026-10-26/iptables_snapshot.txt
+    409600  .../phase4-2026-10-26/mem/core
+        71  .../phase4-2026-10-26/mem/core.sha256
+     19596  .../phase4-2026-10-26/ps_snapshot.txt
+       562  .../phase4-2026-10-26/snapshots.sha256
+       282  .../phase4-2026-10-26/ss_snapshot.txt
+
+--- HASHDEEP MANIFEST: /home/kali/evidence/SOC-CASE-2026-0142/phase4-2026-10-26_hashdeep.txt ---
+%%%% HASHDEEP-1.0
+%%%% size,md5,sha256,filename
+## Invoked from: /
+## # hashdeep -r /home/kali/evidence/SOC-CASE-2026-0142/phase4-2026-10-26
+##
+562,8bab58bc107ff374ffbf48f29802f9b5,959f3c9a6491a166e7b5adff86cca69ad14701ce7c249b0bdb27e3c2b75e8c82,.../snapshots.sha256
+71,01c24a50217c3f39b7d308bfdfc8afd5,2ea32be3896605d5098de8d39b76b786cc409e6f37d40e2e0bbcec035640edb2,.../mem/core.sha256
+51,162342486f15f91d6c4e98fdafff3f3d,a84f78f9ef50af084003d51d1863a852618c8cda6edb98181c7e30a3b1516836,.../iptables_snapshot.txt
+282,88b722a568c8b5451cd9bb3629af20a0,59c6bc6914670964d28bdaf8af9c1a134a24676a1b5c4335b91fc930b2517079,.../ss_snapshot.txt
+217,04b45fad1b4e0263618af0cf095ca541,d85c2718793b18dcc3d68b4c9f8362df64af05821a8f367d3b355162f9df9b5c,.../ip_snapshot.txt
+409600,90786c517e365406b1a578a594c22eeb,c5f2e75c7af2f8f72012b47f87103221427b40921901eece9450cf7cc90a3399,.../mem/core
+3132,a87105acff95c9a7adfd189d6e82ecee,949e38b2af4ad13cd29b38c215d1b77cfbdd048cf13541115daac06a10c7b602,.../containment/ir_phase4_l1.out
+1644,8705c629533ad5f7d15b2790b648cf94,db42f6deafe2200c9d853852d659a7a41aed37da2439d4f27e450c730300b496,.../containment/ir_phase4_services.out
+19596,4a536db206d1aa24020fbc556d387f19,3f931fb1ba114ae2cabd8eae3e8dd5344024bb2a4cb2be7cb88efb306a0a36ab,.../ps_snapshot.txt
+4188,2275681c56f6fa21df853f67d2bf8b06,1b2b0e64e0c0689a5b5dc943028927dfafad5ac2e3bea8b7a684fbe43c8baf4c,.../containment/ir_phase4_pre.out
+1758,6ce0349b54ad72e45716f7ca992e68b5,a50401edc8b1b90bc7be47bd3d156f10339b33d4013bbf18945effeb06df55f3,.../containment/host_side_validation.txt
+1454,560e929e91c5b143a61a572d13ea488a,56726c6706b15995f6e374a7331c894577a83e975c445bf273686129acaf438e,.../containment/ir_phase4_l2.out
+
+--- HASHDEEP AUDIT ---
+hashdeep: Audit passed
+audit rc=0
+
+UTC END: 2026-10-26T16:24:38Z
+DONE
+
+================================================================
+HOST-SIDE VALIDATION SUMMARY (as written to the case dir)
+================================================================
+PHASE 4 CONTAINMENT DRILL - HOST-SIDE VALIDATION (macOS 192.168.64.1 -> Kali 192.168.64.3)
+Date: 2026-10-26 (UTC)
+
+L1 SELECTIVE NETWORK BLOCK  (guest 16:21:33-16:21:44Z)
+  guest -> host:1514 (Wazuh)        : OPEN / allowed
+  guest -> host:9200 (indexer)      : BLOCKED
+  guest -> host:55000 (API)         : BLOCKED
+  guest -> host:443 (dashboard)     : BLOCKED
+  guest -> internet IPv4 1.1.1.1    : BLOCKED
+  host  -> kali ICMP                : 2 tx / 0 rx = 100.0% loss (EXPECTED BLOCKED)
+  host  -> kali TCP 22              : succeeded (EXPECTED ALLOWED)
+  restore: iptables/ip6tables flush + policies ACCEPT; host ping 0% loss; baseline confirmed
+
+L2 FULL LINK DOWN (logical cable pull)  (guest 16:22:35-16:22:47Z)
+  during down (eth0 DOWN)           : host -> kali 2 tx / 0 rx = 100.0% loss
+  after up                          : host -> kali 3 tx / 3 rx = 0.0% loss
+  restored state                    : eth0 UP, 192.168.64.3/24, default via 192.168.64.1
+
+L3 HYPERVISOR ISOLATION (utmctl suspend/resume)  (after 16:22:47Z)
+  utmctl list while suspended       : status = paused
+  host -> kali while suspended      : 2 tx / 0 rx = 100.0% loss
+  utmctl start (resume)             : status = started
+  guest agent responsive            : ~1s after resume
+  host -> kali after resume         : 3 tx / 3 rx = 0.0% loss
+
+L3b SERVICE + ACCOUNT CONTAINMENT  (guest 16:24:03-16:24:12Z)
+  ssh stop + disable                : active=inactive, enabled=disabled, no listener on :22
+  usermod -L labtester              : passwd -S = L (locked)
+  host -> kali:22 while contained   : Connection refused (EXPECTED)
+  restore                           : ssh active/enabled, :22 listening, labtester = P (unlocked)
+  host -> kali:22 after restore     : Connection succeeded
+
+================================================================
+EVIDENCE INDEX (guest paths)
+================================================================
+Phase 3: /home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/
+  fs/passwd                         3 209 B   sha256 d66440fcd129fd6f...
+  fs/passwd.orig.sha256                       (hash taken before copy)
+  fs/passwd.copy.sha256                       (hash of the copy)
+  fs/journal_tail_60.txt           17 876 B   sha256 d9af4e2729de567b...
+  net/demo_icmp.pcap                  708 B   sha256 88a5348874c7fa8a... (6 packets)
+  net/demo_icmp.pcap.readable.txt     556 B   tshark decode
+  mem/core                        409 600 B   sha256 91d7ed51785937fd...
+  ../rerun-2026-10-26_hashdeep.txt            hashdeep manifest; audit PASSED
+
+Phase 4: /home/kali/evidence/SOC-CASE-2026-0142/phase4-2026-10-26/
+  mem/core                        409 600 B   sha256 c5f2e75c7af2f8f7...
+  ps_snapshot.txt                  19 596 B   sha256 3f931fb1ba114ae2...
+  ss_snapshot.txt                     282 B   sha256 59c6bc6914670964...
+  ip_snapshot.txt                     217 B   sha256 d85c2718793b18dc...
+  iptables_snapshot.txt                51 B   sha256 a84f78f9ef50af08...
+  snapshots.sha256                    562 B
+  containment/ir_phase4_pre.out     4 188 B   sha256 1b2b0e64e0c0689a...
+  containment/ir_phase4_l1.out      3 132 B   sha256 949e38b2af4ad13c...
+  containment/ir_phase4_l2.out      1 454 B   sha256 56726c6706b15995...
+  containment/ir_phase4_services.out 1 644 B  sha256 db42f6deafe2200c...
+  containment/host_side_validation.txt 1 758 B sha256 a50401edc8b1b90b...
+  ../phase4-2026-10-26_hashdeep.txt             hashdeep manifest; audit PASSED
+
+================================================================
+GOTCHAS / LESSONS FROM THIS RUN
+================================================================
+1. utmctl exec empty output (L8). A command that has not emitted output within ~0.1 s
+   returns an empty string even though it is still running. Long steps (core dump,
+   tcpdump, package probes, iptables policy + probes) were written to a detached
+   script (nohup) that logs to a file and writes a marker file; the host polled the
+   marker with a fast `test -f` command. Every state change was re-verified with an
+   independent read.
+
+2. `ip -br a eth0` is invalid syntax on this Kali (iproute2 rejects the device filter
+   in that form). Use `ip -br a` or `ip link show eth0`. The document's §2.1 example
+   was corrected accordingly.
+
+3. macOS `ping -t` is a TOTAL timeout, not a per-packet timeout. `ping -c 5 -t 2`
+   sends only two packets. Use `ping -c N` alone for N packets.
+
+4. Combined firewall-removal + link-down script race (16:25 run, discarded). Chaining
+   "remove firewall rule -> sleep 2 -> ip link down" produced one inconsistent host
+   probe (100% loss after removal, then a successful ping while the guest log showed
+   eth0 DOWN). The likely cause is NetworkManager re-activating eth0 during the short
+   window. Two fixes were used: (a) a clean firewall-only re-run with a settle gap
+   (Phase 1, 16:26:41Z), and (b) a dedicated link-down run with a longer window and a
+   guest-side state read while the host probes (Phase 4 L2). The discarded run is not
+   used as evidence. Lesson: isolate one variable per script and verify the guest
+   state at the moment of the host probe.
+
+5. Guest clock is PDT (UTC-7). All script timestamps are `date -u` (UTC); tcpdump /
+   tshark display local time (09:17), which is 16:17 UTC.
+
+6. `tcpdump -c N` holds packets in its buffer until it exits; close it with SIGINT
+   (pkill -INT) before hashing the pcap.
+
+7. The Wazuh agent runs on this guest (process `/var/ossec/bin/wazuh-modulesd` was
+   visible in the pre-drill ps). Isolating the host (L2/L3) stops telemetry to the
+   manager; that is the documented trade-off in §2.1/§4.1 of the main document.
+
+8. `labtester` is not a member of `sudo` (groups = labtester only), so the playbook's
+   `gpasswd -d labtester sudo` step is a no-op on this host; account lock/unlock was
+   demonstrated with `usermod -L` / `-U` and verified with `passwd -S`.
+
+END OF TRANSCRIPT

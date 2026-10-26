@@ -4,10 +4,12 @@
 **Author:** Kyrell Green
 **Module:** Incident Response (`incident_response_1/`)
 **Source rubric:** *Incident Response and Containment* (pasted from the assessment brief)
-**Evidence basis:** live demonstration run 2026-10-20 on the lab's Debian-family Linux guest (Kali,
-agent `002` — this module's documented Parrot-OS stand-in) driven non-interactively through the
-UTM/QEMU guest agent, plus host/hypervisor state read from the running Mac. Full raw transcript:
-`IR_Containment_Live_Demo_Transcript_2026-10-20.txt` (same folder).
+**Evidence basis:** live demonstration run 2026-10-20, plus a full repeat/expansion run on
+**2026-10-26**, on the lab's Debian-family Linux guest (Kali, agent `002` — this module's documented
+Parrot-OS stand-in) driven non-interactively through the UTM/QEMU guest agent, plus host/hypervisor
+state read from the running Mac. Raw transcripts:
+`IR_Containment_Live_Demo_Transcript_2026-10-20.txt` and
+`IR_Containment_Live_Demo_Transcript_2026-10-26.txt` (same folder).
 
 ---
 
@@ -30,16 +32,16 @@ UTM/QEMU guest agent, plus host/hypervisor state read from the running Mac. Full
 
 | # | Rubric requirement | Status | Where |
 |---|---|---|---|
-| 1 | **Network interface configuration** (network isolation in Parrot OS) | ✅ live demo (stand-in) — link down/up isolation verified with connectivity tests; Parrot commands identical, pending its boot | §2.1 |
-| 2 | **Basic firewall rules implementation** | ✅ live demo (stand-in) — DROP rule added, hit counter observed, traffic blocked, rule removed, baseline restored | §2.2 |
-| 3 | **Network segmentation using VirtualBox networking** | 🔄 hypervisor-level segmentation evidence captured live (network modes, host bridge, isolation flags); VirtualBox↔UTM mode map documented; multi-guest segmentation drill ⏳ pending Parrot boot | §1.2, §2.3 |
-| 4 | **File system artifacts** (evidence preservation, Parrot forensic tools) | ✅ live demo — hash → copy → `cmp` verify → metadata recorded; journal export hashed | §3.2 |
-| 5 | **Network traffic captures** | ✅ live demo — `tcpdump` with BPF capture filter, 10 packets captured/verified/hashed; Wireshark toolchain already verified on the macOS host | §3.3 |
-| 6 | **Basic memory dumps** | ✅ live demo — kernel core dump of a live process (400 KB ELF aarch64), hashed; full-RAM acquisition (AVML/LiME) + Volatility3 analysis ⏳ queued with Parrot boot | §3.4 |
-| 7 | **Containment playbook — host isolation steps in VirtualBox** | ✅ written with both VirtualBox and UTM execution paths (4 levels, decision table); ⏳ hypervisor-level stop/snapshot drill pending | §4.2 |
-| 8 | **Containment playbook — network traffic blocking** | ✅ playbook + live guest-firewall demo (item 2); host-layer (macOS pf) documented | §4.3 |
-| 9 | **Containment playbook — service shutdown procedures** | ✅ playbook (identify → stop → disable → validate); ✅ account containment live-verified (lock → verify → restore); service stop drill on Parrot ⏳ | §4.4 |
-| 10 | **Documentation & evidence of functionality** | ✅ this document + full raw transcript + evidence inventory with SHA-256 hashes; screenshots listed per item | §5 |
+| 1 | **Network interface configuration** (network isolation in Parrot OS) | ✅ live demo (stand-in) — link down/up isolation verified with connectivity tests on 2026-10-20 and repeated on 2026-10-26 (100 % → 0 % loss, DHCP re-acquire); Parrot commands identical, pending its boot | §2.1, §4.7 |
+| 2 | **Basic firewall rules implementation** | ✅ live demo (stand-in) — DROP rule added, hit counter observed (2026-10-26: 3 pkts / 252 B), traffic blocked, rule removed, baseline restored | §2.2, §4.7 |
+| 3 | **Network segmentation using VirtualBox networking** | ✅ single-guest segmentation drilled live on 2026-10-26 — IPv4+IPv6 default-deny, SIEM control plane blocked, Wazuh 1514 + management SSH allowed, full restore; hypervisor-level isolation (UTM suspend/resume) also live; multi-VM peer matrix ⏳ | §1.2, §2.3, §2.4, §4.7 |
+| 4 | **File system artifacts** (evidence preservation, Parrot forensic tools) | ✅ live demo — hash → copy → `cmp` verify → metadata recorded; journal export hashed (both runs) | §3.2, §3.6 |
+| 5 | **Network traffic captures** | ✅ live demo — `tcpdump` with BPF capture filter, 10 packets (2026-10-20) and 6 packets / 708 B (2026-10-26) captured/verified/hashed; Wireshark toolchain verified on the macOS host | §3.3, §3.6 |
+| 6 | **Basic memory dumps** | ✅ live demo — kernel core dump of a live process (400 KB ELF aarch64), hashed in both runs; full-RAM acquisition (AVML/LiME) + Volatility3 analysis ⏳ queued with Parrot boot | §3.4, §3.6 |
+| 7 | **Containment playbook — host isolation steps in VirtualBox** | ✅ written with both VirtualBox and UTM execution paths (4 levels, decision table); ✅ L1, L2, L3 executed live (firewall, link down, `utmctl suspend`/resume); ⏳ L4 stop/snapshot-rollback pending | §4.2, §4.7 |
+| 8 | **Containment playbook — network traffic blocking** | ✅ playbook + live guest-firewall block (1514 allowed; 9200/55000/443 and internet blocked, counters moving); host-layer (macOS pf) documented | §4.3, §4.7 |
+| 9 | **Containment playbook — service shutdown procedures** | ✅ playbook (identify → stop → disable → validate); ✅ service stop/disable + account lock executed live on 2026-10-26, validated from the host, and fully restored | §4.4, §4.7 |
+| 10 | **Documentation & evidence of functionality** | ✅ this document + two raw transcripts (2026-10-20 and 2026-10-26) + hashed evidence inventories (SHA-256 / hashdeep, audit passed); screenshots listed per item | §5 |
 
 ---
 
@@ -81,7 +83,7 @@ bridge100: ...
 192.168.64.3   ea.f0.2f.0.11.3a   UHLWIi          bridge100   1161   ← Kali (agent 002)
 ```
 
-### 1.3 Inventory (verified 2026-10-20)
+### 1.3 Inventory (verified 2026-10-20; re-checked 2026-10-26)
 
 | Layer | Component | Address / detail | State |
 |---|---|---|---|
@@ -115,7 +117,8 @@ Isolate and restore (L1 = fastest, most reversible isolation — no packages, no
 
 ```bash
 sudo ip link set eth0 down            # interface DOWN: no IP, no traffic in or out
-ip -br a eth0                         # verify: state DOWN / no address
+ip -br a                              # verify: state DOWN / no address
+# note: `ip -br a eth0` is rejected by this Kali's iproute2 — use `ip -br a` or `ip link show eth0`
 sudo ip link set eth0 up              # restore; DHCP (NetworkManager) re-acquires the address
 ```
 
@@ -229,6 +232,31 @@ live findings:
 | Kali → Parrot | ✗ blocked by Parrot default-deny | ✓ |
 | Host → Parrot ICMP | ✗ (unless mgmt host explicitly allowed) | ✓ |
 | Parrot → host `9200/55000` | ✗ loopback-only after C4 | ✓ today (⚠ finding 1) |
+
+### 2.4 2026-10-26 re-run — quarantine segmentation matrix (executed on the Kali stand-in)
+
+The policy in §2.2 was applied as a full quarantine profile on 2026-10-26 **including IPv6**
+(closing action C3), then probed from both ends and fully restored. The policy is: inbound
+default-DROP with loopback/established + SSH from the management host only; outbound loopback +
+established + local subnet except the SIEM control-plane ports (9200/55000/443/9000/5636), then
+DROP upstream. IPv6 mirrors it with ULA/link-local/ND allowances.
+
+| Probe (vantage → target) | Baseline | Quarantine policy | After restore |
+|---|---|---|---|
+| host → Kali ICMP | 0 % loss | **100 % loss** | 0 % loss |
+| host → Kali TCP 22 (SSH) | open | **open** (explicit allow) | open |
+| Kali → host:1514 (Wazuh agent) | open | **open** (monitoring continuity) | open |
+| Kali → host:9200 (indexer) | open | **blocked** | open |
+| Kali → host:55000 (API) | open | **blocked** | open |
+| Kali → host:443 (dashboard) | open | **blocked** | open |
+| Kali → internet IPv4 (1.1.1.1) | reachable | **blocked** | reachable |
+| Kali → internet IPv6 | blocked (no v6 default route) | blocked | blocked |
+
+Counters after the probes: control-plane DROP **6 pkts / 360 B**, upstream DROP **17 pkts / 28 160 B**,
+INPUT policy DROP **1 pkt / 40 B** — the rules fired, not just loaded. The full log is in
+`IR_Containment_Live_Demo_Transcript_2026-10-26.txt` (Phase 2), and the firewall was flushed back to
+`ACCEPT`/no rules at 16:01:17Z. This is the "quarantine segment" row of the §2.3 table, now
+demonstrated end-to-end on a single guest.
 
 ---
 
@@ -385,6 +413,26 @@ Artifacts E-1…E-5 live on the guest under `/home/kali/evidence/SOC-CASE-2026-0
 are re-listed at the end of the transcript so a reviewer can re-verify at any time
 (`sha256sum /home/kali/evidence/SOC-CASE-2026-0142/*/*`).
 
+### 3.6 2026-10-26 repeat run — evidence inventory
+
+The same preservation procedure was repeated on 2026-10-26 into
+`/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/`, with a second full capture in
+`phase4-2026-10-26/` taken **before** the containment drill (§4.7). Values differ from §3.5 because
+the journal grew and a fresh core was produced; the method and the integrity result are identical.
+
+| # | Artifact | Size | SHA-256 (first 16…) | Provenance |
+|---|---|---|---|---|
+| R-1 | `fs/passwd` | 3 209 B | `d66440fcd129fd6f` | hash → `cp -a --preserve=all` → `cmp` IDENTICAL; mtime preserved |
+| R-2 | `fs/journal_tail_60.txt` | 17 876 B | `d9af4e2729de567b` | `journalctl --no-pager -n 60` |
+| R-3 | `net/demo_icmp.pcap` | 708 B / 6 pkts | `88a5348874c7fa8a` | `tcpdump -i eth0 -s0 -c20 -w … icmp`; `capinfos` + `tshark -Y icmp` verified |
+| R-4 | `mem/core` | 409 600 B | `91d7ed51785937fd` | kernel core of `sleep 600` via `ulimit -c unlimited` + `SIGABRT`; aarch64 ELF |
+| R-5 | `phase4-2026-10-26/mem/core` | 409 600 B | `c5f2e75c7af2f8f7` | pre-containment capture; `ps`/`ss`/`ip`/`iptables` snapshots also hashed |
+| R-6 | `rerun-2026-10-26_hashdeep.txt`, `phase4-2026-10-26_hashdeep.txt` | — | — | `hashdeep -r` manifests; `hashdeep -a` audit **PASSED** for both trees |
+
+The Phase 3 manifest and the Phase 4 manifest are the chain-of-custody record for the 2026-10-26
+drill; both audits returned `Audit passed`. The full hash list is reproduced in the 2026-10-26
+transcript.
+
 ---
 
 ## 4. Containment Playbook
@@ -421,6 +469,13 @@ are re-listed at the end of the transcript so a reviewer can re-verify at any ti
 - Take the snapshot/`sha256sum` of the VM disk (§3.2 note) **before** remediation, not after.
 - `utmctl suspend` is suspend-to-memory: the host still holds the RAM — on a 16 GB machine that is
   4 GB of pinned host memory (see L9); resume or stop promptly.
+
+**Execution status (2026-10-26):** L1, L2 and L3 were drilled live on the Kali stand-in — policy
+applied and validated, `ip link set eth0 down` (100 % loss) and back up (0 % loss), and
+`utmctl suspend` (UTM status `paused`, 100 % loss) followed by `utmctl start` (status `started`,
+guest agent responsive in ~1 s, 0 % loss). L4 (`utmctl stop`) was **not** executed because it
+destroys RAM and forces a reboot; it remains part of action C6 (stop + snapshot rollback). Details
+in §4.7.
 
 ### 4.3 Network traffic blocking
 
@@ -525,24 +580,52 @@ makes the *declined* branch a first-class, recorded path.
    counters → `systemctl stop/disable ssh` → `usermod -L` → validation outputs.
 4. Restore: snapshot rollback (or `ip link up`, rule removal, `usermod -U`, service re-enable).
 
+### 4.7 2026-10-26 full containment drill — executed live
+
+The playbook was executed end-to-end on the Kali stand-in (case `SOC-CASE-2026-0142`, training
+re-run). Each level was isolated, probed from the host, and reversed before the next — the guest was
+never left in a contained state.
+
+| Step | Command (guest) | Host-side result | Restore / final state |
+|---|---|---|---|
+| 0. Pre-capture | `ps`, `ss`, `ip`, `iptables`, core of `sleep 600` | — | evidence in `phase4-2026-10-26/` |
+| **L1** firewall | §2.2 quarantine policy, IPv4 + IPv6 | host ICMP **100 % loss**; SSH 22 **open**; guest 1514 **open**, 9200/55000/443 **blocked**, internet **blocked** | flush + `ACCEPT`; host ping **0 % loss** |
+| **L2** link down | `ip link set eth0 down` | host ICMP **100 % loss** | `ip link set eth0 up`; DHCP re-acquired `.3`; host ping **0 % loss** |
+| **L3** hypervisor | `utmctl suspend "Kali Linux 2023"` | `utmctl list` = **paused**; host ICMP **100 % loss** | `utmctl start`; status **started**; agent ~1 s; host ping **0 % loss** |
+| **L3b** service/account | `systemctl stop ssh` + `disable`; `usermod -L labtester` | `:22` **connection refused**; `passwd -S` = **L** | `enable` + `start`; `usermod -U`; `:22` **succeeded**; `passwd -S` = **P** |
+
+Evidence: all guest logs are copied to
+`/home/kali/evidence/SOC-CASE-2026-0142/phase4-2026-10-26/containment/`, the host-side validation is
+`host_side_validation.txt`, and both the inventory and the manifest audit are in the same tree. The
+full command-by-command transcript is `IR_Containment_Live_Demo_Transcript_2026-10-26.txt`.
+
+**What this proves for the rubric:** interface isolation (L2), firewall-based isolation (L1), a
+hypervisor-level isolation action (L3), and service/account shutdown (L3b) all produce the claimed
+observable effect and are reversible. It does **not** prove L4 (`utmctl stop`) — that remains C6.
+
 ---
 
 ## 5. Documentation & Evidence of Functionality
 
 ### 5.1 What was demonstrated live, and where it is recorded
 
-| Demo | Result | Transcript section |
+| Demo | Result | Transcript |
 |---|---|---|
-| Interface isolation (down/up + connectivity proof) | 100 % loss → 0 % loss | S3 |
-| Firewall DROP rule + hit counter + removal + baseline restore | counter `1 pkt / 84 B`; ping 100 % → 0 % | S2, S8 |
-| File artifact hash/copy/verify + journal export | hashes in §3.5 | S4, 2b |
-| Network capture (BPF filter) + capinfos + hash | 10 packets, 1164 B | S5, Part 2 |
-| Memory dump (kernel core, aarch64 ELF) + hash | 400 960 B | S6, Part 2c |
-| Account lock/verify/restore | `P → L → P` | S7, Part 2g |
-| Host-side topology, VirtualBox state, port exposure | §1.2–§1.3 | host notes in transcript header |
+| Interface isolation (down/up + connectivity proof) | 100 % loss → 0 % loss | 2026-10-20 S3; 2026-10-26 Phase 4 §4.2 |
+| Firewall DROP rule + hit counter + removal + baseline restore | 2026-10-20: `1 pkt / 84 B`; 2026-10-26: `3 pkts / 252 B`; ping 100 % → 0 % | 2026-10-20 S2/S8; 2026-10-26 Phase 1 |
+| Quarantine segmentation (IPv4 + IPv6) with control-plane block | 1514 open; 9200/55000/443 + internet blocked; counters 6/360, 17/28 160 | 2026-10-26 Phase 2 |
+| File artifact hash/copy/verify + journal export | §3.5 (2026-10-20) and §3.6 (2026-10-26) | S4/2b; 2026-10-26 Phase 3 |
+| Network capture (BPF filter) + capinfos + hash | 10 packets / 1 164 B; 6 packets / 708 B | 2026-10-20 S5; 2026-10-26 Phase 3 |
+| Memory dump (kernel core, aarch64 ELF) + hash | 400 960 B (both runs) | 2026-10-20 S6; 2026-10-26 Phase 3 + Phase 4 |
+| Account lock/verify/restore | `P → L → P` | 2026-10-20 S7; 2026-10-26 Phase 4 §4.4 |
+| Hypervisor suspend/resume | `paused` + 100 % loss → `started` + 0 % loss | 2026-10-26 Phase 4 §4.3 |
+| Service stop/disable + host-side refusal | `:22` refused; `inactive`/`disabled`; restored | 2026-10-26 Phase 4 §4.4 |
+| Host-side topology, VirtualBox state, port exposure | §1.2–§1.3 | host notes in both transcripts |
 
-The raw transcript is deliberately **warts-and-all** (including the guest-agent's intermittent
-lost-output behaviour, L8) — evidence of a real session, not a cleaned-up script.
+The 2026-10-26 run is a full repeat of the 2026-10-20 demonstration plus the expanded L1–L3b
+containment drill. Both transcripts are deliberately **warts-and-all** (including the guest-agent's
+intermittent lost-output behaviour, L8, and the NetworkManager race documented in the 2026-10-26
+transcript) — evidence of real sessions, not cleaned-up scripts.
 
 ### 5.2 Screenshots in this module
 
@@ -571,7 +654,7 @@ lost-output behaviour, L8) — evidence of a real session, not a cleaned-up scri
 | # | Limitation |
 |---|---|
 | L1 | Parrot OS itself was **not re-booted** for this assignment — every guest-side procedure ran on the established Kali stand-in (same Debian toolchain); Parrot commands are byte-identical but ⏳ unexecuted there |
-| L2 | Segmentation **between VMs** (multi-guest validation matrix) not yet drilled — single-guest isolation was what could be demonstrated live |
+| L2 | Segmentation **between VMs** (multi-guest validation matrix) not yet drilled — single-guest segmentation (IPv4+IPv6), L1–L3 isolation and service/account containment WERE drilled live on 2026-10-26; the peer matrix (Kali ↔ Ubuntu) remains |
 | L3 | Full-RAM acquisition (AVML/LiME) and Volatility 3 analysis still pending (owned by `IR Environment Setup.md` §7) |
 | L4 | `gcore`/`gdb` path not demonstrated (gdb absent on the stand-in) — kernel-core method used instead |
 | L5 | macOS `pf` host-layer blocking documented but not applied (needs interactive sudo) |
@@ -580,17 +663,19 @@ lost-output behaviour, L8) — evidence of a real session, not a cleaned-up scri
 | L8 | The UTM guest agent (`utmctl exec`) intermittently returns **empty results while sometimes still executing the command** — every state-changing demo was therefore re-verified with an independent read (`passwd -S`, `iptables -S`, ping); keep this in mind when reproducing |
 | L9 | 16 GB host RAM (swap 4.0/5.1 GB in use during this session) — at most one or two guests + Docker; a Parrot boot for C2 needs Kali stopped first |
 | L10 | Correction: an earlier statement in `IR Environment Setup.md` §1.1 ("VirtualBox cannot host aarch64 guests") is inaccurate for VirtualBox ≥ 7.1 — superseded by §1.1 above |
+| L11 | L4 (`utmctl stop`) was not executed — it destroys RAM and forces a reboot; L3 suspend/resume was used instead. A full stop/start + snapshot rollback is still owed (C6) |
+| L12 | A combined "remove firewall rule → link down" script produced one inconsistent host probe (successful ping while the guest log showed `eth0` DOWN), most likely a NetworkManager re-activation race. The clean firewall-only run and the dedicated L2 run are the evidence used; see transcript gotcha 4 |
 
 ### 6.2 Actions (continuing the build order of `IR Environment Setup.md` A1–A8)
 
 | ID | Action | Rubric line closed |
 |---|---|---|
 | C1 | Boot Parrot; install `qemu-guest-agent` (enables non-interactive `utmctl exec` — the path proven on Kali); set forensic-segment flag (`IsolateFromHost=true`) in `config.plist` while off | 1, 3 |
-| C2 | Re-run the §2.1–§2.3 + §3 procedures on Parrot; execute the segmentation validation matrix and the §4.6 drill end-to-end; capture screenshots | 1–9 |
-| C3 | Add IPv6 (`ip6tables`/`nft inet`) drop policy alongside the IPv4 rules | 2, 8 |
+| C2 | Re-run the §2.1–§2.4 + §3 + §4.7 procedures **on Parrot**; the full drill was executed on the Kali stand-in 2026-10-26 — Parrot itself and screenshots still pending | 1–9 |
+| C3 | Add IPv6 (`ip6tables`/`nft inet`) drop policy alongside the IPv4 rules — ✅ **done on the Kali stand-in 2026-10-26** (default-deny + ND/ULA allow, validated and restored); re-apply on Parrot | 2, 8 |
 | C4 | Rebind Docker publishes from `0.0.0.0` to loopback/bridge IP; apply + verify macOS `pf` anchor | 3, 8 |
 | C5 | Install sleuthkit/hashdeep/dcfldd + Wireshark on Parrot (package steps §3.2/§3.3) | 4, 5 |
-| C6 | Hypervisor drill: snapshot → UTM `stop`/`suspend` isolation → rollback; `sha256sum` of VM disk as pre-remediation image | 7 |
+| C6 | Hypervisor drill: **suspend/resume done 2026-10-26** (`paused`, 100 % loss → `started`, 0 % loss); still owed: snapshot → `utmctl stop` (L4) → rollback; `sha256sum` of VM disk as pre-remediation image | 7 |
 | C7 | Install Volatility 3 on Parrot + one plugin run over a LiME/AVML image (ties to `IR Environment Setup.md` A6) | 6 |
 | C8 | Capture the screenshot set in §5.3; update ⏳ markers as each action completes | 10 |
 
@@ -605,7 +690,8 @@ lost-output behaviour, L8) — evidence of a real session, not a cleaned-up scri
 | `security_operations_center_1/Incident_Response_Methodology.md` | runbook blocks, D1–D7, capture-before-contain rule |
 | `security_operations_center_1/Incident Response Documentation_ Case Management, Escalation, and Ransomware Report.md` | isolation-decision record (T+20 edge block), isolate-vs-shutdown annex |
 | `network_security_1/Network_Security_Tools_Report.md` | Wireshark capture analysis methodology |
-| `IR_Containment_Live_Demo_Transcript_2026-10-20.txt` | full raw evidence transcript for every ✅ in this document |
+| `IR_Containment_Live_Demo_Transcript_2026-10-20.txt` | full raw evidence transcript for the 2026-10-20 demonstration |
+| `IR_Containment_Live_Demo_Transcript_2026-10-26.txt` | full raw evidence transcript for the 2026-10-26 repeat/expansion run (Phase 1–4) |
 | `.opencode/memory/PROJECT.md` | live lab journal — environment, gotchas, history |
 
-*Prepared from a live demonstration on 2026-10-20 and the running lab state in this repository.*
+*Prepared from live demonstrations on 2026-10-20 and 2026-10-26 and the running lab state in this repository.*

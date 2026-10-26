@@ -8,7 +8,65 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest (2026-10-22, 2nd): demo-hardened agent + HTML reports, running supervised for a 1pm demo.**
+**Latest (2026-10-26, 5th): FastAPI triage control plane + minimal Streamlit dashboard scaffolded.**
+Added `ai-agentic-soc/services/triage_api/` (`app.py`, `jobs.py`, `executor.py`, `cases.py`,
+`decisions.py`, `schemas.py`, `__main__.py`) as a thin HTTP layer over the existing
+`agent.runner.investigate_now()` seam. `POST /api/v1/investigations` queues an alert id to a
+single background worker; `GET /api/v1/jobs/{id}` polls status; `/api/v1/cases` parses the existing
+`reports/SOC-*.md` metadata (9 cases, no new DB); `/api/v1/cases/{id}/report?format=html|markdown`
+serves the report; `POST /api/v1/cases/{id}/decision` persists approve/reject to
+`data/triage_decisions.json`; `/health` + `/metrics` included. The adapter sets `config.notify=False`
+so API runs do not fire desktop popups. New `frontend/app.py` Streamlit client lists cases, renders
+Markdown/HTML, records decisions, and queues/polls investigations. **85 tests passing** (new
+`tests/test_triage_api.py`: 5 tests). Live smoke: `venv/bin/python -m services.triage_api` on
+`127.0.0.1:8080` returned health `ok` and 9 parsed cases; Streamlit served HTTP 200. API defaults to
+loopback; Streamlit must be started with `--server.address 127.0.0.1` (otherwise it binds broadly).
+No auth, single worker (agent state is single-writer). README updated. Known gap: dashboard does not
+yet render a separate timeline/MITRE view and decisions are not written to TheHive. Not committed.
+
+**Previous (2026-10-26, 4th): IR containment Phase 4 (full drill) executed live on Kali + doc/transcript
+updated.** Ran the complete L1→L3b containment sequence plus a clean Phase 1 re-run. **L1** quarantine
+policy (IPv4+IPv6): host→Kali ICMP **100% loss**, SSH 22 **allowed**, Kali→host:1514 **allowed**,
+9200/55000/443 + internet **blocked**; counters 6/360, 17/28,160, 1/40; restored baseline **0% loss**.
+**L2** `ip link set eth0 down` → **100% loss** → `up` → DHCP re-acquired `.3` → **0% loss**. **L3**
+`utmctl suspend` → status `paused`, host **100% loss** → `utmctl start` → `started`, agent ~1 s,
+**0% loss**. **L3b** `systemctl stop+disable ssh` + `usermod -L labtester` → `:22` **connection refused**,
+`passwd -S` = **L** → restored `active`/`enabled`, `:22` succeeds, **P**. Pre-capture (ps/ss/ip/iptables
++ core) and Phase 3 rerun evidence under `/home/kali/evidence/SOC-CASE-2026-0142/phase4-2026-10-26/`
+and `.../rerun-2026-10-26/`; both `hashdeep -a` audits passed. **Docs:** updated
+`incident_response_1/Incident Response and Containment.md` (§2.4, §3.6, §4.2 status, §4.7, §5.1,
+§6.1 L11/L12, §6.2 C2/C3/C6) and added `IR_Containment_Live_Demo_Transcript_2026-10-26.txt`.
+**Gotcha:** a combined "remove firewall rule → link down" script raced NetworkManager (one inconsistent
+probe); split into separate scripts and re-verified. Not committed.
+
+**Previous (2026-10-26, 1st): IR containment Phase 1 executed live on Kali (Parrot skipped by decision).**
+Re-ran the containment demos on agent 002 (`Kali Linux 2023`, `192.168.64.3`) via `utmctl exec` as
+the Parrot stand-in. **Firewall:** DROP rule for `192.168.64.1` ICMP added → host ping **100% loss**,
+counter **2 pkt / 168 B** → rule removed → baseline restored, **0% loss**. **Interface:**
+`ip link set eth0 down` → **100% loss** → `up` → DHCP re-acquired `.3` (new IPv6 SLAAC addr) →
+**0% loss**. Baseline `iptables`/`ip6tables` = all ACCEPT, no rules. The `utmctl exec` empty-output
+gotcha (L8) hit twice; every state change was re-verified host-side. **Decision: finish the IR
+assignment on Kali; Parrot stays staged/unbooted and is documented as the stand-in.**
+
+**Phase 2 (segmentation) — same day, Kali.** Applied a quarantine policy (IPv4/IPv6): inbound
+default-DROP + SSH from host only; egress local-subnet only, with SIEM control-plane ports
+9200/55000/443/9000/5636 explicitly dropped and all upstream traffic dropped. Verified live:
+Kali→host:1514 **allowed**, Kali→host:9200/55000/443 **blocked**, Kali→internet v4 **blocked**,
+host→Kali ICMP **blocked**, host→Kali SSH **allowed**. Baseline fully restored (policies ACCEPT,
+no rules; connectivity + internet back). Important `utmctl exec` finding: it returns empty after
+~0.1s for any command that has not emitted output yet **while the command keeps running** — run
+long checks detached to a file and poll. Not committed.
+
+**Phase 3 (evidence preservation) — same day, Kali.** Case workspace
+`/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/{fs,net,mem}`. **FS:** `/etc/passwd`
+hash → `cp -a --preserve=all` → `cmp` identical (3,209 B, `d66440fc…`), journald tail-60 export
+(17,876 B, `d9af4e27…`). **Net:** `tcpdump -i eth0 -s0 -c20 -w demo_icmp.pcap "icmp"` → **6 packets**,
+708 B, `88a53488…`, verified with `capinfos` + `tshark -Y icmp`. **Mem:** kernel core of `sleep 600`
+via `ulimit -c unlimited` + `SIGABRT` → **409,600 B** aarch64 ELF, `91d7ed51…`. `hashdeep -r`
+manifest written and `hashdeep -a` audit **passed**. All artifacts hashed; no baseline changes.
+Not committed.
+
+**Previous (2026-10-22, 2nd): demo-hardened agent + HTML reports, running supervised for a 1pm demo.**
 The background triage agent now writes **both** a Markdown and a styled, self-contained **HTML**
 report (`reports/SOC-…md` + `.html`, plus `LATEST.md`/`LATEST.html`) and the desktop dialog opens
 the **HTML** ("Open Report" → browser; "Reveal in Finder" → the .md). **80 tests passing.**
@@ -502,16 +560,18 @@ What exists today (capstone):
   wazuh-docker compose). Verified working 2026-10-01.
 
 **Next steps**
-1. Weeks 8–11 capstone remainder: Streamlit dashboard over `reports/` (incident list, timeline,
-   MITRE view, analyst approval gate that records approve/reject back into the case).
-2. Add a live human-in-the-loop approval artifact (currently the gate is the DRAFT stamp + dialog;
-   no persisted analyst decision yet).
+1. Finish the dashboard: add a dedicated timeline/MITRE view (the API already serves parsed case
+   metadata and the full report), plus queue/job history and a clear DRAFT/approval state.
+2. Wire the persisted analyst decision into the action layer (TheHive case update or an explicit
+   approved-action executor); today the API records approve/reject but nothing consumes it.
 3. Optional hardening: scripted JSON-schema response (instead of `json_object`) to cut the free-tier
    repair rate; pin a paid model once credits exist (removes the ~350s fallback path).
 4. Repoint `investigation/evidence.py` at `IndexerClient` (legacy code path still calls the 4.x-only
    `/security-events` route) or retire it now that `agent/` is the live pipeline.
 5. Still open from earlier: read-only indexer user scoped to `wazuh-alerts-*`; `reports/` is not
    gitignored (contains lab IPs, no secrets).
+6. If the API is ever exposed beyond loopback, add authentication before doing so; it currently has
+   no auth and an in-memory single-worker queue.
 
 ## Environment (note: work also happens on a Windows/WSL box)
 
@@ -565,6 +625,43 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-10-26 (5th)** — Added the FastAPI triage control plane and minimal Streamlit client.
+  New `services/triage_api/`: `create_app()` + lifespan-managed single-worker `JobManager`; the
+  executor adapter calls `agent.runner.investigate_now()` unchanged, resolves the alert via
+  `IndexerClient.get_alert()`, and forces `config.notify=False`. Endpoints: health, metrics,
+  investigation queue, job polling/list, case list/detail, Markdown/HTML report, decision. Case
+  metadata is parsed from the existing `reports/SOC-*.md` files (no new DB); decisions persist
+  atomically to `data/triage_decisions.json`; reports are never modified. New `frontend/app.py`
+  Streamlit client: case selector, metrics, Markdown/HTML report, decision form, investigation
+  form + job status. 85 tests pass (new `tests/test_triage_api.py`, 5 tests); live API smoke
+  returned `ok` + 9 cases; Streamlit served HTTP 200. API defaults to loopback; Streamlit is
+  documented with `--server.address 127.0.0.1` because it otherwise binds broadly. README updated.
+  Not committed.
+- **2026-10-26 (4th)** — IR Phase 4 (full containment drill) on Kali + doc/transcript updated: L1
+  quarantine policy (IPv4+IPv6; 100% ICMP loss, 1514 allowed, 9200/55000/443 + internet blocked;
+  counters 6/360, 17/28,160, 1/40; restored), L2 link down/up (100% → 0%), L3 `utmctl suspend`
+  (`paused`, 100% loss) → `utmctl start` (`started`, agent ~1 s, 0%), L3b ssh stop/disable +
+  `usermod -L labtester` (`:22` refused, L) → restored (`active`/`enabled`, P). Pre-capture + Phase 3
+  rerun evidence under `.../phase4-2026-10-26/` + `.../rerun-2026-10-26/`; hashdeep audits passed.
+  Updated `Incident Response and Containment.md` (§2.4, §3.6, §4.2/§4.7, §5.1, §6.1 L11/L12,
+  §6.2 C2/C3/C6) and added `IR_Containment_Live_Demo_Transcript_2026-10-26.txt`. Gotcha: combined
+  firewall-removal + link-down script raced NetworkManager; split and re-verified. Not committed.
+- **2026-10-26 (3rd)** — IR Phase 3 (evidence preservation) on Kali: FS hash/copy/cmp + journal
+  export; `tcpdump` ICMP capture (6 pkts, 708 B) + `capinfos`/`tshark` display filter; kernel core
+  dump (409,600 B aarch64) via `SIGABRT`; `hashdeep` manifest + audit passed. Evidence under
+  `/home/kali/evidence/SOC-CASE-2026-0142/rerun-2026-10-26/`. Journal edit only — not committed.
+- **2026-10-26 (2nd)** — IR Phase 2 (segmentation) on Kali: applied an IPv4/IPv6 quarantine policy
+  (inbound default-DROP + host SSH allow; egress local-only, SIEM ports 9200/55000/443/9000/5636
+  dropped, upstream dropped). Validation: host:1514 allowed; 9200/55000/443 blocked; internet v4
+  blocked; host→Kali ICMP blocked; host→Kali SSH allowed. Baseline fully restored. Key gotcha
+  refined: `utmctl exec` returns empty after ~0.1s for commands that don't emit output immediately
+  but the process continues — long checks must run detached (`nohup`) writing to a file, then be
+  polled. Journal edit only — not committed.
+- **2026-10-26** — IR Phase 1 re-run on Kali (Parrot skipped per user decision): firewall DROP
+  (100%→0% loss, counter 2 pkt/168 B, baseline restored) + `ip link` isolation (down/up, IP
+  re-acquired, 0% loss) verified live via `utmctl exec`. Also confirmed `ip -br a eth0` is invalid
+  syntax (use `ip -br a` or `ip link show eth0`); the guest-agent empty-output gotcha recurred
+  twice (L8). Journal edit only — not committed.
 - **2026-10-22 (2nd)** — Demo-hardening pass: (1) **HTML report renderer**
   (`agent/report.py::render_report_html` + `write_report_html`, self-contained dark-themed page,
   no external assets/JS, HTML-escaped) written next to the `.md` (`.html` + `LATEST.html`); the
