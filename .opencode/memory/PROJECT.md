@@ -8,7 +8,67 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest (2026-10-20): New deliverable `incident_response_1/Incident Response and Containment.md` written
+**Latest (2026-10-22, 2nd): demo-hardened agent + HTML reports, running supervised for a 1pm demo.**
+The background triage agent now writes **both** a Markdown and a styled, self-contained **HTML**
+report (`reports/SOC-…md` + `.html`, plus `LATEST.md`/`LATEST.html`) and the desktop dialog opens
+the **HTML** ("Open Report" → browser; "Reveal in Finder" → the .md). **80 tests passing.**
+Run it supervised so it survives crashes and idle-sleep:
+`cd ai-agentic-soc && nohup bash scripts/run_agent_daemon.sh 14400 >/dev/null 2>&1 &`
+(new `scripts/run_agent_daemon.sh`: restart-on-crash wrapper + `caffeinate -i` + supervisor log
+`data/agent_supervisor.log`; the arg is a max-seconds budget). Live-verified: 72 correlated events,
+MTTD 15.1s, burst 49.2s, triage 80s, Medium/High, primary model answered first try.
+
+**Model-order fix (important).** `nvidia/nemotron-3.5-lightning:free` is a **reasoning model that
+can burn the whole token budget on hidden reasoning and emit ZERO content** (`finish_reason=length`,
+empty string) — it wasted 165-311s before falling back. Default is now
+**`nvidia/nemotron-3-ultra-550b-a55b:free` primary**, `nvidia/nemotron-3.5-lightning:free` fallback.
+Also dropped `AGENT_MAX_EVENTS_IN_PROMPT` 250→60 (prompt 13.9k→11.6k chars) which cut narrative
+latency ~140s→~70-80s. `AGENT_LLM_MAX_TOKENS=8000`, `AGENT_LLM_TIMEOUT=150`, `AGENT_LLM_BUDGET=600`.
+
+**Demo dedupe decision.** `AGENT_DEDUPE_WINDOW_MINUTES` lowered 20→2 so repeated brute-force tests
+from the same source (the Mac, 192.168.64.1) each produce a fresh report + popup; a single burst
+still yields one report. (At 20 min the 2nd/3rd test attacks were silently suppressed as dupes.)
+
+**Latest (2026-10-22): background triage agent built and RUNNING as a detached daemon.**
+`ai-agentic-soc/agent/` now implements a continuous LangGraph loop
+`watch → supervisor → identity/EDR → siem → timeline → reason → report → notify`.
+**76 tests passing.** Live end-to-end verified against real Wazuh alerts: 48 correlated events,
+MTTD 13.1s, burst 47.2s, 2 separate bursts, incident report `reports/SOC-20261022-001.md` with an
+LLM-written narrative (severity Medium, confidence High). Daemon log: `data/agent_daemon.log`;
+PID changes on restart. Reports land in `reports/SOC-YYYYMMDD-NNN.md` + `LATEST.md`.
+
+Design points worth remembering:
+- **Code owns the facts, the LLM only writes prose.** Counts/timeline/bursts/MITRE are computed in
+  Python from indexed alerts; the model cannot invent numbers. Report is stamped
+  `DRAFT — requires analyst review` and containment is advice-only (hard human gate).
+- **Settle window (`AGENT_SETTLE_SECONDS=25`)** exists because Wazuh correlation rules fire *after*
+  the individual events. Without it the agent triggered on rule `5503` (level 5, PAM) instead of
+  `100002` (level 12 brute-force verdict) and correlated only 8 of ~40 events. With it: correct
+  trigger, ~41-65 events, 3x reproduced.
+- **Trigger floor `AGENT_TRIGGER_MIN_LEVEL=10`**: every alert ≥ `AGENT_MIN_LEVEL` (4) is collected
+  as correlation context, but only level ≥10 can START an investigation — so benign level-5
+  noise never queues a report. `--min-level` still overrides.
+- **Burst delineation (`AGENT_BURST_GAP_SECONDS=120`)**: `_split_bursts()` separates attacks from
+  the same source that are minutes apart, so the report shows "attack duration 34.0s, 2 bursts"
+  instead of a misleading 9-minute "attack".
+
+**GOTCHA — the MiniMax free route was RETIRED 2026-10-22.** `minimax/minimax-m3.1-flash:free`
+now returns HTTP 404 ("free launch period ended"); the paid slug `minimax/minimax-m3.1-flash`
+returns HTTP 402 (account has never purchased credits). Default model is now
+`nvidia/nemotron-3.5-lightning:free`, with `OPENROUTER_FALLBACK_MODELS`
+(`nvidia/nemotron-3-ultra-550b-a55b:free`) tried when the primary fails or returns unparsable JSON.
+
+**GOTCHA — free-tier models routinely answer a JSON request with prose/truncated JSON.** Fixed
+with (a) a repair re-ask that attaches the bad reply and demands raw JSON, (b) an ordered model
+chain, (c) `AGENT_LLM_BUDGET` deadline. **`httpx` timeouts are per-read, not total** — a stalled
+generation streamed slowly and hung the daemon ~7 minutes despite `AGENT_LLM_TIMEOUT=180`; the
+`AGENT_LLM_BUDGET` deadline plus per-attempt WARNING lines in `data/agent_daemon.log` now bound and
+expose it. Triage with the 550B fallback takes ~350s; the lightning primary usually answers in 50-120s.
+
+**Python 3.9 note:** the official `openrouter` SDK needs ≥3.10, so `agent/llm.py` is a hand-written
+`httpx` REST client (same contract). Keep using `Optional[...]`, never `X | None`.
+
+**Previous (2026-10-20): New deliverable `incident_response_1/Incident Response and Containment.md` written
 — the first module doc with LIVE-executed evidence.** Rubric: network isolation in Parrot OS
 (interface config, firewall rules, VirtualBox-OS-networking segmentation), evidence preservation
 (fs artifacts, pcaps, memory dumps), containment playbook (host isolation, traffic blocking, service
@@ -442,12 +502,16 @@ What exists today (capstone):
   wazuh-docker compose). Verified working 2026-10-01.
 
 **Next steps**
-1. Repoint `investigation/evidence.py` at `IndexerClient` (it still pulls alerts via
-   `WazuhClient.query_alerts`, which 404s on 4.x) and re-run the e2e test against the indexer.
-2. Create a read-only indexer user scoped to `wazuh-alerts-*`; populate `ai-agentic-soc/.env`
-   (still missing) with API + indexer credentials.
-3. Weeks 5–7: LangGraph supervisor agent + tool-calling to the three pillars + correlation
-   and MITRE timeline logic. Board week 5 (LangGraph) started 2026-09-14.
+1. Weeks 8–11 capstone remainder: Streamlit dashboard over `reports/` (incident list, timeline,
+   MITRE view, analyst approval gate that records approve/reject back into the case).
+2. Add a live human-in-the-loop approval artifact (currently the gate is the DRAFT stamp + dialog;
+   no persisted analyst decision yet).
+3. Optional hardening: scripted JSON-schema response (instead of `json_object`) to cut the free-tier
+   repair rate; pin a paid model once credits exist (removes the ~350s fallback path).
+4. Repoint `investigation/evidence.py` at `IndexerClient` (legacy code path still calls the 4.x-only
+   `/security-events` route) or retire it now that `agent/` is the live pipeline.
+5. Still open from earlier: read-only indexer user scoped to `wazuh-alerts-*`; `reports/` is not
+   gitignored (contains lab IPs, no secrets).
 
 ## Environment (note: work also happens on a Windows/WSL box)
 
@@ -501,6 +565,39 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-10-22 (2nd)** — Demo-hardening pass: (1) **HTML report renderer**
+  (`agent/report.py::render_report_html` + `write_report_html`, self-contained dark-themed page,
+  no external assets/JS, HTML-escaped) written next to the `.md` (`.html` + `LATEST.html`); the
+  toast dialog now opens the **HTML** (`build_clickable_script(..., html_path=)`), reveal still
+  targets the `.md`; state records `report_html`. (2) **Model order swapped** — the lightning
+  model is a reasoning model that exhausts `max_tokens` on hidden reasoning and returns an EMPTY
+  string (`finish_reason=length`), costing 165-311s before fallback; `nvidia/nemotron-3-ultra-550b-
+  a55b:free` is now primary (reliable ~70-140s complete JSON), lightning is fallback.
+  (3) `AGENT_MAX_EVENTS_IN_PROMPT` 250→60, `AGENT_LLM_MAX_TOKENS` 6000→8000.
+  (4) `AGENT_DEDUPE_WINDOW_MINUTES` 20→2 so repeated same-source demo attacks each re-trigger.
+  (5) New `scripts/run_agent_daemon.sh` (restart-on-crash + `caffeinate -i`, optional max-seconds
+  budget) for unattended runs. 80 tests pass. Live-verified: 72 events, MTTD 15.1s, triage 80s,
+  both reports written, notification fired. Docs (README/ARCHITECTURE) updated for HTML + new
+  defaults. Journal edit only — not committed.
+- **2026-10-22** — Built the **background triage agent** (`ai-agentic-soc/agent/`: config, events,
+  correlation, llm, report, notifier, state, graph, runner) and left it running detached. 76 tests
+  pass. Live-verified three times against real SSH brute force from the Mac (192.168.64.1) to Kali
+  agent 002: correct trigger on rule `100002` (level 12), 48-65 correlated events, MTTD 13.1s,
+  burst 47.2s, 2 bursts, LLM narrative in `reports/SOC-20261022-001.md`.
+  Key fixes discovered by running it for real: (1) **settle window** — Wazuh aggregate rules fire
+  after the level-5 events, so triggering immediately reported rule `5503` and only 8 events;
+  (2) **burst split** — two attacks 8.5 min apart were being reported as one 9-minute attack;
+  (3) **trigger floor 10** — level-5 noise was queueing reports; (4) **AppleScript notifier** had
+  unescaped quotes so the dialog silently failed (now `build_clickable_script()` + osacompile test);
+  (5) **model retirement** — `minimax/minimax-m3.1-flash:free` returned 404 on 10-22 (paid slug
+  needs credits, 402); switched to `nvidia/nemotron-3.5-lightning:free` with a 550B fallback;
+  (6) **free-tier JSON flakiness** — added a repair re-ask + model chain + `AGENT_LLM_BUDGET`
+  deadline after an httpx per-read timeout (not total) hung the daemon ~7 minutes. Docs updated:
+  ARCHITECTURE §9-16 (runtime diagram, code-owns-facts table, settle/burst timing, config table),
+  README section + env table + roadmap (weeks 1-11). `.env` got `OPENROUTER_API_KEY` (line 20),
+  `OPENROUTER_FALLBACK_MODELS`, `AGENT_TRIGGER_MIN_LEVEL=10`, `AGENT_BURST_GAP_SECONDS=120`,
+  `AGENT_LLM_TIMEOUT/RETRIES/BUDGET`. `reports/` is still NOT gitignored. Run it with:
+  `cd ai-agentic-soc && nohup venv/bin/python -m agent.runner > data/agent_daemon.log 2>&1 &`.
 - **2026-10-20** — Wrote `incident_response_1/Incident Response and Containment.md` (rubric: network
   isolation procedures incl. interface config + firewall rules + VirtualBox-networking segmentation;
   evidence preservation for fs artifacts, traffic captures, memory dumps; containment playbook for

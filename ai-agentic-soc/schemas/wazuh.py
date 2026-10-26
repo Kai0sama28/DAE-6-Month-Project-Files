@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 class WazuhRuleMitre(BaseModel):
     id: list[str] = Field(default_factory=list)
     tactic: list[str] = Field(default_factory=list)
+    technique: list[str] = Field(default_factory=list)
 
 
 class WazuhRule(BaseModel):
@@ -17,6 +18,7 @@ class WazuhRule(BaseModel):
     description: str = ""
     groups: list[str] = Field(default_factory=list)
     mitre: Optional[WazuhRuleMitre] = None
+    firedtimes: int = 0
 
 
 class WazuhAgent(BaseModel):
