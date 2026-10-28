@@ -1,0 +1,47 @@
+=== containment lab validation ===
+generated_utc=2026-10-25T16:03:35Z
+lab_home=/mnt/c/Users/Kai/Desktop/DAE-6-Month-Project-Files/incident_response_1/containment_lab
+host=DESKTOP-VCKJCPV
+user=kai
+
+PASS  file exists: lab.env
+PASS  file exists: README.md
+PASS  file exists: playbooks/containment-playbook.md
+PASS  file exists: configs/nftables/ir-baseline.nft
+PASS  file exists: configs/iptables/ir-baseline.rules
+PASS  file exists: configs/netplan/50-ir-lab.yaml
+PASS  bash syntax: scripts/00-preflight.sh
+PASS  executable: scripts/00-preflight.sh
+PASS  bash syntax: scripts/10-configure-network.sh
+PASS  executable: scripts/10-configure-network.sh
+PASS  bash syntax: scripts/20-firewall-baseline.sh
+PASS  executable: scripts/20-firewall-baseline.sh
+PASS  bash syntax: scripts/30-network-isolation-vbox.sh
+PASS  executable: scripts/30-network-isolation-vbox.sh
+PASS  bash syntax: scripts/40-evidence-preserve.sh
+PASS  executable: scripts/40-evidence-preserve.sh
+PASS  bash syntax: scripts/50-containment-playbook.sh
+PASS  executable: scripts/50-containment-playbook.sh
+PASS  bash syntax: scripts/60-verify.sh
+PASS  executable: scripts/60-verify.sh
+PASS  bash syntax: scripts/99-validate-kit.sh
+PASS  executable: scripts/99-validate-kit.sh
+PASS  bash syntax: scripts/lib/common.sh
+PASS  executable: scripts/lib/common.sh
+PASS  nft baseline has default-drop policy
+PASS  nft baseline scopes management SSH
+PASS  nft baseline blocks core-to-protected segment
+PASS  lab.env references actual Kali agent address 192.168.64.3
+PASS  lab.env references actual case SOC-CASE-2026-0142
+WARN  nft not installed; syntax check skipped
+PASS  iproute2 available: ip utility, iproute2-6.19.0, libbpf 1.6.3
+PASS  VBoxManage available: /mnt/c/Program Files/Oracle/VirtualBox/VBoxManage.exe
+7.2.16r174877
+PASS  VirtualBox host-only interface exists
+PASS  actual Kali VM is registered in VirtualBox
+PASS  netplan core address matches actual core network
+PASS  netplan YAML parses
+PASS  PowerShell network script parses (powershell.exe)
+
+=== summary ===
+pass=36 warn=1 fail=0

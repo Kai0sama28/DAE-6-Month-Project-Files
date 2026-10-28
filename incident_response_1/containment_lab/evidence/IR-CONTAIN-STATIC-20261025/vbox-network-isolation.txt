@@ -1,0 +1,31 @@
+=== VirtualBox networking plan ===
+action=move-quarantine vm=Kali nic=2 network=IR-LAB-QUARANTINE promisc=deny
+VBoxManage=/mnt/c/Program Files/Oracle/VirtualBox/VBoxManage.exe
+
+=== host-only ===
+Name:            VirtualBox Host-Only Ethernet Adapter
+GUID:            5c3651ff-e0fa-491c-a00b-fdbb01d7db20
+DHCP:            Disabled
+IPAddress:       192.168.56.1
+NetworkMask:     255.255.255.0
+IPV6Address:     fe80::774e:cc2d:5077:f652
+IPV6NetworkMaskPrefixLength: 64
+HardwareAddress: 0a:00:27:00:00:0b
+MediumType:      Ethernet
+Wireless:        No
+Status:          Up
+VBoxNetworkName: HostInterfaceNetworking-VirtualBox Host-Only Ethernet Adapter
+
+
+=== internal networks present ===
+
+=== running VMs ===
+
+=== all VMs ===
+"Kali" {146a4653-d3bd-48e6-93b2-1fd1e0c1952e}
+
+=== planned action (move-quarantine) ===
+$ /mnt/c/Program Files/Oracle/VirtualBox/VBoxManage.exe modifyvm "Kali" --nic2=intnet --intnet2=IR-LAB-QUARANTINE
+$ /mnt/c/Program Files/Oracle/VirtualBox/VBoxManage.exe modifyvm "Kali" --nic-promisc2=deny
+
+Dry run only. Re-run with --apply and confirm when prompted.

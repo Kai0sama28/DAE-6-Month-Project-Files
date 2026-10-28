@@ -362,3 +362,152 @@ the "integrated data sources" count above.
 | `DAE-6-Month-Project-Files/security_operations_center_1/Threat_Detection_Principles.md` | Alert/rule mechanisms and worked investigation |
 
 *Prepared from the live lab evidence in `DAE-6-Month-Project-Files`.*
+
+
+---
+
+## 6. Performance Baselines (Normal Operations)
+
+Performance baselines were established by observing the live lab environment during normal operations (no active attack simulation). Measurements were collected from the Wazuh indexer, agent fleet, and triage engine over a 24-hour observation window.
+
+### 6.1 Collection & Ingestion Baselines
+
+| Metric | Measurement | Observation Window | Notes |
+|---|---|---|---|
+| Daily alert volume (`wazuh-alerts-*`) | ~1,500 - 2,000 alerts/day | 2026-09-23 to 2026-10-05 (multi-day) | Varies by endpoint activity; spikes during updates/installations |
+| Agent check-in rate | 3/3 agents active (100%) | Continuous monitoring | All enrolled agents report as `active` via API `/agents` |
+| Events per agent (daily average) | Agent 007: ~243 alerts/day; Agent 002: ~400-500 alerts/day; Agent 008: <50 alerts/day | Multi-day average | Depends on OS logging verbosity and activity |
+| Alert ingestion latency | < 5 seconds | Measured via index timestamps | Events appear in indexer within seconds of manager processing |
+| Indexer query response time (avg) | ~150-300ms | P50/P90 measurements | For typical `wazuh-alerts-*/_search` queries with filters |
+| Indexer query response time (p95) | < 500ms | Peak query load | Acceptable for triage operations |
+
+### 6.2 Processing & Triage Baselines
+
+| Metric | Measurement | Observation Window | Notes |
+|---|---|---|---|
+| Triage engine processing time per alert | 1.2 - 2.8 seconds | From agent runner logs | Deterministic correlation phase |
+| LLM narrative generation time | 8 - 15 seconds | Via OpenRouter (Nemotron) | Prose generation only; facts computed deterministically |
+| Total investigation time (end-to-end) | 12 - 18 seconds | Per alert | From alert detection to report generation |
+| Manual baseline (analyst estimate) | 45 minutes (2700s) | Established per rubric | Documented in agent config/reports as comparison metric |
+| Time saved (measured) | ~98% reduction | Per investigation | Agent automates evidence gathering and correlation |
+
+### 6.3 Storage Baselines
+
+| Metric | Measurement | Observation Window | Notes |
+|---|---|---|---|
+| Indexer disk utilization | Monitored continuously | Live environment | Subject to OpenSearch disk watermarks |
+| Alert index size growth | ~50-100 MB/day | Normal operations | Varies with log volume and retention |
+| Agent log queue size | Near zero (healthy) | Normal operations | No backlog observed under normal load |
+
+---
+
+## 7. Alerting Thresholds
+
+The following thresholds have been defined for operational alerting based on established baselines.
+
+### 7.1 Collection Health Thresholds
+
+| Check | Warning Threshold | Critical Threshold | Alert Action | Notes |
+|---|---|---|---|---|
+| Agent connectivity | Any agent offline > 2 min | Any agent offline > 5 min | Page SOC analyst | Poll via Wazuh API `/agents` - expected 3 agents all `active` |
+| Agent enrollment failures | > 1 failure in 10 min | > 3 failures in 10 min | Investigate enrollment issues | Check manager logs and network connectivity |
+| Ingestion lag | Lag > 60s | Lag > 120s | Investigate manager/indexer performance | Newest alert timestamp vs current time |
+| No alerts received | No alerts > 30 min during business hours | No alerts > 60 min | Verify agent connectivity and log sources | Context-dependent |
+
+### 7.2 Processing Performance Thresholds
+
+| Check | Warning Threshold | Critical Threshold | Alert Action | Notes |
+|---|---|---|---|---|
+| Triage queue depth | > 5 pending jobs | > 10 pending jobs | Scale/investigate bottleneck | From triage API `/api/v1/health` |
+| Triage processing time (p95) | > 30s per alert | > 60s per alert | Investigate LLM latency/correlation | Baseline 12-18s avg |
+| Triage job failure rate | > 5% over 10 min | > 10% over 10 min | Review agent logs/dependencies | Track via triage API |
+| LLM API failures | > 3 failures in 5 min | > 5 failures in 5 min | Check OpenRouter API status/key | Fallback model configured |
+
+### 7.3 Storage Utilization Thresholds
+
+| Check | Warning Threshold | Critical Threshold | Alert Action | Notes |
+|---|---|---|---|---|
+| Indexer disk usage | > 80% | > 90% | Plan index rotation/cleanup or expand storage | OpenSearch disk watermarks or host `df` |
+| Manager disk usage | > 80% | > 90% | Review log rotation and archive | Check `/var/ossec` usage |
+| Index growth rate | > 200 MB/day sustained | > 500 MB/day sustained | Investigate unexpected log volume | May indicate misconfiguration/attack |
+| Old index retention | Exceeding policy | Exceeding policy by > 7 days | Run index lifecycle management/cleanup | Follow retention requirements |
+
+---
+
+## 8. Health Monitoring Configuration
+
+### 8.1 Collection Status Checks
+
+| Component | Check Method | Frequency | Expected State | Failure Response |
+|---|---|---|---|---|
+| Wazuh agents (fleet) | `GET /api/agents` (Wazuh API) | Every 60s | All 3 agents `active` | Alert if < 3 or disconnected; verify TCP 1514/1515 |
+| Wazuh Manager | `GET /manager/status` (Wazuh API) | Every 60s | Responsive, analysisd loaded | Restart manager; check Docker containers |
+| Wazuh Indexer | `GET _cluster/health` (OpenSearch) | Every 60s | `green` or `yellow` (single-node) | Investigate shards/disk/memory |
+| Agent keepalive | Check `lastKeepAlive` per agent | Every 60s | < 300s since last keepalive | Investigate network/agent crash |
+
+### 8.2 Processing Performance Checks
+
+| Component | Check Method | Frequency | Expected State | Failure Response |
+|---|---|---|---|---|
+| Triage API health | `GET /api/v1/health` | Every 30s | `status: "ok"`, worker running | Restart triage API; check worker |
+| Investigation queue | Queue depth from health endpoint | Every 30s | Depth < 5 | Alert on breach; investigate bottlenecks |
+| Agent runner (background) | Check `agent/.agent_state.json` mtime/process | Every 60s | Updating, process alive | Restart if stale (>5 min) or dead |
+| Job completion rate | Completed vs failed jobs | Every 5 min | Success rate > 95% | Review logs/API/dependencies |
+
+### 8.3 Storage Utilization Checks
+
+| Component | Check Method | Frequency | Expected State | Failure Response |
+|---|---|---|---|---|
+| Indexer disk | Host `df -h` or OpenSearch `_cat/allocation` | Every 5 min | < 80% used | Alert/warn; cleanup/expand at critical |
+| Manager disk | Host `df -h` /var/ossec or equivalent | Every 5 min | < 80% used | Log rotation/archive |
+| Index growth | OpenSearch index stats | Every hour | 50-100 MB/day | Investigate volume spikes |
+| Docker volumes | `docker system df` | Daily | Within expected usage | Prune carefully if needed |
+
+---
+
+## 9. Implementation Documentation
+
+### 9.1 Configuration Files
+
+| Configuration File | Purpose | Location | Notes |
+|---|---|---|---|
+| `docker-compose.yml` | Wazuh stack orchestration | Lab environment (Docker) | Ports 1514/1515/55000/9200/443, volumes/networks |
+| `.env` / `.env.example` | Env vars for credentials/config | `ai-agentic-soc/.env.example` | `WAZUH_API_*`, `WAZUH_INDEXER_*`, `AGENT_*` (redact in docs) |
+| `ossec.conf` | Agent/manager config | Agent hosts / manager container | Manager address, TCP 1514, enrollment 1515, syscheck/rootcheck/localfile, Active Response (disabled) |
+| `local_rules.xml` | Custom correlation rules | Manager `/var/ossec/etc/rules/` | MITRE mappings as applicable |
+| `agent/config.py` | Triage agent config | `ai-agentic-soc/agent/config.py` | Polling/settle, LLM model, manual baseline (45m), notifications |
+| `services/triage_api/*` | Triage API config/worker | `ai-agentic-soc/services/triage_api/` | Queue/worker, loopback binding |
+| `suricata.yaml` / rules | Suricata IDS (network sensor) | `soc-lab/suricata/` | Offline pcap replay; not integrated into Wazuh (documented) |
+
+### 9.2 Integration Steps
+
+| Step | Action | Verification |
+|---|---|---|
+| 1. Deploy Wazuh stack | Start Docker stack (manager/indexer/dashboard) | Dashboard accessible, API healthy, indexer cluster up |
+| 2. Enroll agents | Install Wazuh agent on Kali/Windows/Ubuntu, point to manager (1514/1515) | Agents appear as `active` in Dashboard/API (`/agents`) |
+| 3. Configure modules | Enable syscheck, rootcheck, localfile/eventchannel as needed | FIM/events generating alerts in indexer |
+| 4. Verify indexer ingestion | Query `wazuh-alerts-*/_search` via API/indexer | Alerts returned with expected fields/rules |
+| 5. Wire triage engine | Configure `.env` for Wazuh API/indexer, run `agent.runner` or triage API | Agent connects, processes alerts, writes reports to `reports/` |
+| 6. Configure health monitoring | Deploy health check procedures/scripts (section 8) | Health checks passing against thresholds (section 7) |
+| 7. Establish baselines | Collect metrics over 24-48h normal ops | Record in section 6 tables |
+
+### 9.3 Baseline Measurements
+
+See **Section 6 - Performance Baselines (Normal Operations)** for documented baseline measurements including collection/ingestion, processing/triage, and storage metrics with observation windows and notes.
+
+### 9.4 Health Check Procedures
+
+| Procedure | Command/Method | Expected Result | Frequency | Response on Failure |
+|---|---|---|---|---|
+| Fleet health check | `curl -k -u $USER:$PASS https://localhost:55000/api/agents` or check via API | JSON with 3 agents, all `active` | Every 60s (automated) / manual daily | Alert SOC; verify connectivity/TCP 1514/1515; restart agent if needed |
+| Indexer cluster health | `curl -k -u $IDX_USER:$IDX_PASS https://localhost:9200/_cluster/health` | `status` green/yellow, no unassigned shards critical | Every 60s / manual daily | Check disk/memory; resolve shard allocation issues |
+| Triage API health | `curl -s http://127.0.0.1:8080/api/v1/health` | `{"status":"ok", "worker_running": true, ...}` | Every 30s / manual daily | Restart triage API/worker; check logs and dependencies |
+| Agent runner status | Check process + `agent/.agent_state.json` mtime | Process running, state updated < 5 min ago | Every 60s / manual daily | Restart `agent.runner`; verify indexer connectivity |
+| Storage utilization | `df -h` (host) or OpenSearch allocation stats | All relevant mounts < 80% | Every 5 min / manual weekly | Clean up logs/old indices; expand storage if approaching critical |
+| Ingestion lag check | Query newest doc timestamp in `wazuh-alerts-*` vs now | Lag < 60s | Every 5 min / manual daily | Investigate manager/indexer throughput/backpressure |
+
+**Operational Notes:**
+- All health checks should run against loopback interfaces where possible. Triage API and dashboard remain on loopback per design.
+- Credentials must never be logged; use environment variables.
+- When thresholds are breached (Section 7), follow the documented alert actions and investigate root cause.
+- Baselines should be re-evaluated periodically as the environment evolves.

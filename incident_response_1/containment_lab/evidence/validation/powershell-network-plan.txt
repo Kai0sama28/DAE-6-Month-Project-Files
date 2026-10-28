@@ -1,0 +1,12 @@
+VBoxManage: C:\Program Files\Oracle\VirtualBox\VBoxManage.exe
+Host-only interface: VirtualBox Host-Only Ethernet Adapter
+Host address: 192.168.56.1/255.255.255.0
+
+Detected host-only interfaces: VirtualBox Host-Only Ethernet Adapter
+Dry run. Re-run with -Apply to create and configure the host-only network.
+& "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" hostonlyif ipconfig "VirtualBox Host-Only Ethernet Adapter" --ip 192.168.56.1 --netmask 255.255.255.0
+& "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" dhcpserver remove --ifname "VirtualBox Host-Only Ethernet Adapter"
+& "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" list hostonlyifs
+
+Internal networks are created when the first VM adapter is attached:
+  IR-LAB-CORE, IR-LAB-PROTECTED, IR-LAB-QUARANTINE

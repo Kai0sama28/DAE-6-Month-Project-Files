@@ -1,0 +1,61 @@
+table inet ir_filter {
+    set blocked_hosts {
+        type ipv4_addr
+        flags timeout
+    }
+
+    set quarantine_hosts {
+        type ipv4_addr
+        flags timeout
+    }
+
+    chain input {
+        type filter hook input priority filter; policy drop;
+
+        iif "lo" accept
+        ct state established,related accept
+        ct state invalid drop
+        meta nfproto ipv6 ct state established,related accept
+        ip6 nexthdr ipv6-icmp accept
+
+        ip saddr @blocked_hosts drop
+        ip saddr @quarantine_hosts drop
+
+        udp sport 67 udp dport 68 accept
+        udp sport 547 udp dport 546 accept
+
+        icmp type { echo-request, destination-unreachable, time-exceeded } accept
+        ip saddr 192.168.56.0/24 tcp dport 22 accept
+        ip saddr 192.168.56.0/24 udp dport 53 accept
+        ip saddr 192.168.56.0/24 tcp dport 53 accept
+
+        tcp dport 22 log prefix "IR-INPUT-SSH-DROP: " level info
+        log prefix "IR-INPUT-DROP: " level info
+        counter drop
+    }
+
+    chain forward {
+        type filter hook forward priority filter; policy drop;
+
+        ct state established,related accept
+        ct state invalid drop
+        ip saddr @blocked_hosts drop
+        ip saddr @quarantine_hosts drop
+        ip daddr @blocked_hosts drop
+        ip daddr @quarantine_hosts drop
+
+        ip saddr 192.168.56.0/24 ip daddr 10.20.20.0/24 tcp dport { 22, 443 } accept
+        ip saddr 192.168.64.0/24 ip daddr 10.20.20.0/24 drop
+        ip saddr 192.168.64.0/24 ip daddr 10.11.1.232 drop
+
+        log prefix "IR-FORWARD-DROP: " level info
+        counter drop
+    }
+
+    chain output {
+        type filter hook output priority filter; policy accept;
+
+        ip daddr @blocked_hosts drop
+        ip daddr @quarantine_hosts drop
+    }
+}

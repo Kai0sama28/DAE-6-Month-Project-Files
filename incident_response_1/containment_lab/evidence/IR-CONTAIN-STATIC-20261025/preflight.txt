@@ -1,0 +1,156 @@
+=== identity ===
+uid=1000(kai) gid=1000(kai) groups=1000(kai),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),100(users)
+
+=== date ===
+Sun Oct 25 15:52:19 UTC 2026
+
+=== os ===
+PRETTY_NAME="Ubuntu 26.04.1 LTS"
+NAME="Ubuntu"
+VERSION_ID="26.04"
+VERSION="26.04.1 LTS (Resolute Raccoon)"
+VERSION_CODENAME=resolute
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+UBUNTU_CODENAME=resolute
+LOGO=ubuntu-logo
+
+=== kernel ===
+Linux DESKTOP-VCKJCPV 6.18.54.1-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Tue Oct  6 19:13:07 UTC 2026 x86_64 GNU/Linux
+
+=== lab config ===
+LAB_PROFILE="${LAB_PROFILE:-virtualbox}"
+
+VBOX_MGMT_IF="${VBOX_MGMT_IF:-VirtualBox Host-Only Ethernet Adapter}"
+VBOX_HOST_IP="${VBOX_HOST_IP:-192.168.56.1}"
+VBOX_NET_CORE="${VBOX_NET_CORE:-IR-LAB-CORE}"
+VBOX_NET_PROTECTED="${VBOX_NET_PROTECTED:-IR-LAB-PROTECTED}"
+VBOX_NET_QUARANTINE="${VBOX_NET_QUARANTINE:-IR-LAB-QUARANTINE}"
+
+VM_PARROT="${VM_PARROT:-PARROT-IR}"
+VM_VICTIM="${VM_VICTIM:-Kali}"
+VM_ATTACKER="${VM_ATTACKER:-ATTACKER-01}"
+VM_PROTECTED="${VM_PROTECTED:-PROTECTED-01}"
+
+LAB_NET_MGMT="${LAB_NET_MGMT:-192.168.56.0/24}"
+LAB_NET_CORE="${LAB_NET_CORE:-192.168.64.0/24}"
+LAB_NET_PROTECTED="${LAB_NET_PROTECTED:-10.20.20.0/24}"
+LAB_NET_QUARANTINE="${LAB_NET_QUARANTINE:-10.20.99.0/24}"
+
+IR_MGMT_IP="${IR_MGMT_IP:-192.168.56.10}"
+IR_CORE_IP="${IR_CORE_IP:-192.168.64.10}"
+IR_PROTECTED_IP="${IR_PROTECTED_IP:-10.20.20.10}"
+
+VICTIM_IP="${VICTIM_IP:-192.168.64.3}"
+ATTACKER_IP="${ATTACKER_IP:-203.0.113.77}"
+PROTECTED_IP="${PROTECTED_IP:-10.20.20.20}"
+QUARANTINE_IP="${QUARANTINE_IP:-10.20.99.20}"
+
+IF_NAT="${IF_NAT:-enp0s3}"
+IF_MGMT="${IF_MGMT:-enp0s8}"
+IF_CORE="${IF_CORE:-enp0s9}"
+IF_PROTECTED="${IF_PROTECTED:-enp0s10}"
+
+CASE_PREFIX="${CASE_PREFIX:-IR-CONTAIN}"
+CAPTURE_ROTATE_SECONDS="${CAPTURE_ROTATE_SECONDS:-300}"
+CAPTURE_RING_FILES="${CAPTURE_RING_FILES:-24}"
+
+WINDOWS_AGENT_IP="${WINDOWS_AGENT_IP:-10.11.1.232}"
+UBUNTU_AGENT_IP="${UBUNTU_AGENT_IP:-192.168.64.2}"
+WAZUH_MANAGER_IP="${WAZUH_MANAGER_IP:-192.168.64.1}"
+CASE_REFERENCE="${CASE_REFERENCE:-SOC-CASE-2026-0142}"
+=== ip addresses ===
+$ ip -br addr
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+eth0             UP             172.31.101.144/20 fe80::215:5dff:fe98:3aaa/64 
+[exit=0]
+
+=== ip routes ===
+$ ip route
+default via 172.31.96.1 dev eth0 proto kernel onlink 
+172.31.96.0/20 dev eth0 proto kernel scope link src 172.31.101.144 
+[exit=0]
+
+=== ip rules ===
+$ ip rule
+0:	from all lookup local
+32766:	from all lookup main
+32767:	from all lookup default
+[exit=0]
+
+=== ip neighbours ===
+$ ip neigh
+172.31.96.1 dev eth0 lladdr 00:15:5d:2d:42:2f REACHABLE 
+[exit=0]
+
+MISSING: nft
+
+=== tool inventory ===
+present  ip  /usr/sbin/ip
+missing  nft
+missing  tcpdump
+missing  tshark
+missing  capinfos
+present  sha256sum  /usr/bin/sha256sum
+present  systemctl  /usr/bin/systemctl
+present  journalctl  /usr/bin/journalctl
+present  ss  /usr/bin/ss
+present  ps  /usr/bin/ps
+present  tar  /usr/bin/tar
+present  find  /usr/bin/find
+present  awk  /usr/bin/awk
+present  sed  /usr/bin/sed
+present  grep  /usr/bin/grep
+present  curl  /usr/bin/curl
+missing  avml
+present  insmod  /usr/sbin/insmod
+missing  vol
+missing  vol.py
+missing  VBoxManage
+missing  VBoxManage.exe
+
+=== resolved interfaces ===
+IF_NAT=enp0s3
+IF_MGMT=
+IF_CORE=
+IF_PROTECTED=
+WARN: IF_NAT=enp0s3 does not exist
+WARN: IF_MGMT is not set or was not detected
+WARN: IF_CORE is not set or was not detected
+WARN: IF_PROTECTED is not set or was not detected
+WARN: MGMT address 192.168.56.10 is not configured
+WARN: CORE address 192.168.64.10 is not configured
+WARN: PROTECTED address 10.20.20.10 is not configured
+=== VirtualBox version ===
+$ /mnt/c/Program Files/Oracle/VirtualBox/VBoxManage.exe --version
+7.2.16r174877
+[exit=0]
+
+=== VirtualBox host-only interfaces ===
+$ /mnt/c/Program Files/Oracle/VirtualBox/VBoxManage.exe list hostonlyifs
+Name:            VirtualBox Host-Only Ethernet Adapter
+GUID:            5c3651ff-e0fa-491c-a00b-fdbb01d7db20
+DHCP:            Disabled
+IPAddress:       192.168.56.1
+NetworkMask:     255.255.255.0
+IPV6Address:     fe80::774e:cc2d:5077:f652
+IPV6NetworkMaskPrefixLength: 64
+HardwareAddress: 0a:00:27:00:00:0b
+MediumType:      Ethernet
+Wireless:        No
+Status:          Up
+VBoxNetworkName: HostInterfaceNetworking-VirtualBox Host-Only Ethernet Adapter
+
+[exit=0]
+
+=== VirtualBox running VMs ===
+$ /mnt/c/Program Files/Oracle/VirtualBox/VBoxManage.exe list runningvms
+[exit=0]
+
+
+=== result ===
+PASS

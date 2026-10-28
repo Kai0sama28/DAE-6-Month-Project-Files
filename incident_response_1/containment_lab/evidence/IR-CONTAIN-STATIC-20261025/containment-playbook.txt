@@ -1,0 +1,27 @@
+=== containment playbook ===
+case_id=IR-CONTAIN-STATIC-20261025
+action=plan
+timestamp_utc=2026-10-25T15:52:25Z
+operator=kai
+## Host isolation (VirtualBox)
+1. Snapshot/cordon the affected VM (power off only if no volatile evidence loss is acceptable and acquisition already done)
+2. Move NIC to IR-LAB-QUARANTINE (internal network) or disconnect entirely
+3. Disable promiscuous mode; block cross-network routes
+4. Record VM UUID, MAC, adapter, network before/after
+
+## Network traffic blocking
+1. Add nftables/iptables DROP for attacker IP/CIDR in input/forward/output
+2. Rate-limit only if DoS; prefer DROP for confirmed compromise
+3. Push to persistence unit if the node remains in service
+4. Log blocks (prefix IR-*)
+
+## Service shutdown
+1. Enumerate dependent services (ss -tulpn, systemctl list-units)
+2. Stop/disable only affected services (avoid taking down the logger/forensics stack)
+3. Mask if necessary; avoid deleting binaries until eradication approved
+4. Capture journalctl around shutdown time
+
+## Evidence-preservation gates
+- Acquire network capture BEFORE applying aggressive blocks if feasible
+- Hash artifacts and update chain-of-custody
+- Do not reboot the compromised host before memory/disk snapshots as required
