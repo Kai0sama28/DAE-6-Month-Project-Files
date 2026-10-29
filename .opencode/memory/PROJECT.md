@@ -8,7 +8,18 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest (2026-10-26, 5th): FastAPI triage control plane + minimal Streamlit dashboard scaffolded.**
+**Latest (2026-10-28): Eval dataset design agreed — NOT implemented yet.**
+Next deliverable is a 50-case labeled evaluation dataset: 10 each of `credential_stuffing`,
+`brute_force`, `phishing`, `ransomware_precursor`, `benign`. Each case is an incident bundle with
+1–8 Wazuh-shaped alert documents plus identity/EDR/SIEM evidence (~200 alert docs total). Ground
+truth labels are assigned by code, never by the LLM; `nvidia/nemotron-3-ultra-550b-a55b:free` is
+used only for prose/log-text enrichment, then frozen. Labels live in PostgreSQL `soc_triage_db`
+under a dedicated `eval` schema (`eval.cases`, `eval.alerts`, dataset metadata); output also as
+JSONL. No writes to `wazuh-alerts-*`, and no mutation of the live `identity.db`/`edr.db` mocks.
+Planned package `ai-agentic-soc/evals/` + `tests/test_eval_dataset.py`. Breakdown was given and
+the user was asked to confirm before code starts.
+
+**Previous (2026-10-26, 5th): FastAPI triage control plane + minimal Streamlit dashboard scaffolded.**
 Added `ai-agentic-soc/services/triage_api/` (`app.py`, `jobs.py`, `executor.py`, `cases.py`,
 `decisions.py`, `schemas.py`, `__main__.py`) as a thin HTTP layer over the existing
 `agent.runner.investigate_now()` seam. `POST /api/v1/investigations` queues an alert id to a
@@ -625,6 +636,12 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-10-28** — Agreed the labeled-evaluation dataset design (no code written yet). 50 cases =
+  10 per class (`credential_stuffing`, `brute_force`, `phishing`, `ransomware_precursor`, `benign`);
+  each case = 1–8 Wazuh-shaped alerts + identity/EDR/SIEM evidence. Labels are code-assigned ground
+  truth, stored in Postgres `soc_triage_db` (`eval` schema); LLM (`nvidia/nemotron-3-ultra-550b-
+  a55b:free`) only enriches prose. JSONL output for now; live Wazuh index and mock DBs untouched.
+  Planned `ai-agentic-soc/evals/` package and dataset tests. Awaiting user go-ahead.
 - **2026-10-26 (5th)** — Added the FastAPI triage control plane and minimal Streamlit client.
   New `services/triage_api/`: `create_app()` + lifespan-managed single-worker `JobManager`; the
   executor adapter calls `agent.runner.investigate_now()` unchanged, resolves the alert via
