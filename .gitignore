@@ -1,0 +1,74 @@
+# ---------------------------------------------------------------------------
+# Secrets & credentials — NEVER commit these
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+*.jks
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+credentials.json
+service-account*.json
+.streamlit/secrets.toml
+
+# Screenshots that may contain live credentials
+screenshots/*password*
+screenshots/*token*
+screenshots/*secret*
+**/screenshots/*password*
+**/screenshots/*token*
+**/screenshots/*secret*
+
+# ---------------------------------------------------------------------------
+# macOS
+# ---------------------------------------------------------------------------
+.DS_Store
+._*
+.AppleDouble
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+venv/
+.venv/
+env/
+ENV/
+*.egg-info/
+
+# Virtual environment checked in by mistake (kept on disk, untracked)
+ai-agentic-soc/venv/
+
+# ---------------------------------------------------------------------------
+# Runtime data / databases / logs
+# ---------------------------------------------------------------------------
+ai-agentic-soc/data/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+*.pcap
+*.pcapng
+*.core
+core.*
+
+# ---------------------------------------------------------------------------
+# Node / opencode
+# ---------------------------------------------------------------------------
+node_modules/
+.opencode/node_modules/
+
+# ---------------------------------------------------------------------------
+# Local SOC lab (separate lab, not part of this portfolio repo)
+# ---------------------------------------------------------------------------
+soc-lab/
