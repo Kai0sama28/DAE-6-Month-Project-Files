@@ -8,7 +8,18 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest (2026-10-28): Eval dataset design agreed — NOT implemented yet.**
+**Latest (2026-11-02): Portfolio repo fixed and pushed — GitHub secret-scanning block resolved.**
+Push to `origin/main` was rejected by GitHub Push Protection (GH013) because the two unpushed
+commits contained `soc-lab/suricata/rules/suricata.rules` (ET Open rule with sample Google OAuth
+strings) and `soc-lab/thehive/.env`. Fix: added root `.gitignore` (secrets, `.env*`, `*.pem`/`*.p12`,
+screenshot password patterns, `ai-agentic-soc/venv/`, data/DBs, `.DS_Store`, `soc-lab/`,
+`node_modules/`), squashed the 2 unpushed commits into one that drops `soc-lab`, and untracked the
+Python venv (10,541 files) + 26 `.DS_Store` files. Working tree clean; pushed as `2058d14`.
+`.env` was never committed; the current tree/index has no detected secret patterns. **Open risk:**
+`ai-agentic-soc/screenshots/wazuh password.png` is already in pushed history (`e46c01a`), so the
+Wazuh admin password should be rotated (purging GitHub history needs a force push per request).
+
+**Previous (2026-10-28): Eval dataset design agreed — NOT implemented yet.**
 Next deliverable is a 50-case labeled evaluation dataset: 10 each of `credential_stuffing`,
 `brute_force`, `phishing`, `ransomware_precursor`, `benign`. Each case is an incident bundle with
 1–8 Wazuh-shaped alert documents plus identity/EDR/SIEM evidence (~200 alert docs total). Ground
@@ -636,6 +647,16 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-11-02** — Unblocked the portfolio push. GitHub GH013/Push Protection flagged
+  `soc-lab/suricata/rules/suricata.rules:43616` (Google OAuth refresh token/client id/secret sample
+  strings in an ET Open rule) in unpushed commit `0a525ac`; the same commit also carried
+  `soc-lab/thehive/.env`. Added a root `.gitignore`, soft-reset the 2 unpushed commits, rebuilt a
+  single clean commit without `soc-lab`, and untracked `ai-agentic-soc/venv` (10,541 files) + 26
+  `.DS_Store` files. Pushed `2058d14`; deleted the local backup branch and pruned reflog/objects so
+  the secret blobs are gone locally. `.env` was never in history. Gotcha: GitHub scans **every
+  commit in the push range**, so deleting the file in a follow-up commit is not enough — the
+  offending commit must be rewritten/squashed. **Still open:** `screenshots/wazuh password.png` is
+  in already-public history (`e46c01a`) — rotate the Wazuh admin password.
 - **2026-10-28** — Agreed the labeled-evaluation dataset design (no code written yet). 50 cases =
   10 per class (`credential_stuffing`, `brute_force`, `phishing`, `ransomware_precursor`, `benign`);
   each case = 1–8 Wazuh-shaped alerts + identity/EDR/SIEM evidence. Labels are code-assigned ground
