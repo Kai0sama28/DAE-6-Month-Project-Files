@@ -1,0 +1,20 @@
+{
+  "cursor": null,
+  "seen_ids": [],
+  "incident_seq": 0,
+  "last_incident": {
+    "incident_id": "EVAL-BF-002",
+    "report": "evals/results/reports/EVAL-BF-002.md",
+    "report_html": "evals/results/reports/EVAL-BF-002.html",
+    "at": "2026-11-04T17:14:39.254530+00:00",
+    "trigger_rule": "5763",
+    "severity": "High"
+  },
+  "recent_keys": [
+    {
+      "key": "008|203.0.113.21",
+      "ts": 1793812386.849401
+    }
+  ],
+  "runs": 0
+}

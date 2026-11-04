@@ -8,7 +8,41 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest (2026-11-02): Portfolio repo fixed and pushed — GitHub secret-scanning block resolved.**
+**Latest (2026-11-04, 2nd): LLM evaluation run against the labeled dataset — 45/50 completed.**
+Built `evals/scoring.py`, `evals/run_eval.py`, and `tests/test_eval_runner.py`; the harness replays
+each case bundle through the real `agent.graph` (skips watch, disables identity/EDR + notifications,
+stubs `WazuhClient`) using the dataset indexer. `agent/report.py` now asks for an explicit
+`recommended_action` (`monitor`/`investigate`/`escalate`/`contain`) so recommendation scoring is
+direct. Live run: 50 trigger investigations, 3 workers, primary
+`nvidia/nemotron-3-ultra-550b-a55b:free` + lightning fallback. Results: **45/50 completed,
+ATT&CK correct 43/50 (86.0%), ATT&CK exact 13/50 (26.0%), recommendation exact 17/50 (34.0%),
+lenient 40/50 (80.0%)**; completed-run mean **85.0s**, median **76.5s**, p95 **132.0s**, max
+**329.4s**. The 5 incomplete cases (`EVAL-BN-006`–`EVAL-BN-010`) were blocked by OpenRouter
+free-tier `429 free-models-per-day`; they have no narrative and are scored incorrect, not
+silently passed via deterministic fallback. Key finding: model often says `escalate`/`investigate`
+while recommending host/account containment; phishing exact rec 1/10, ransomware exact 0/10
+(lenient 9/10 and 8/10). Added `--rescore` (re-score saved JSONL without LLM calls) and report
+run-notes. Deliverables: `evals/results/soc-eval-2026-11-cases-llm-EVALUATION.md`,
+`...-PROCESSING_TIMES.md`, `.jsonl`, `.csv`, `-run-meta.json`, and `evals/results/reports/EVAL-*.md`.
+**99 tests passing.** README updated. Not committed.
+
+**Previous (2026-11-04): Labeled evaluation dataset implemented — 50 cases / 246 Wazuh-shaped alerts
+loaded into PostgreSQL `eval` schema.** Implemented `ai-agentic-soc/evals/`: deterministic
+`generator.py` (10 cases each of `credential_stuffing`, `brute_force`, `phishing`,
+`ransomware_precursor`, `benign`), `store.py` (PostgreSQL `eval.datasets`, `eval.cases`,
+`eval.alerts` with composite `(dataset_id, case_id)` keys + JSONL I/O), and a `python -m evals`
+CLI. Labels are assigned by the generator only; generated title/summary prose is checked against
+a forbidden-term list so it cannot leak the label. Each case = 1–8 Wazuh-shaped alert documents
+plus identity/EDR evidence and a derived SIEM summary. Output:
+`evals/dataset/soc-eval-2026-11.jsonl` (50 lines, 344 KB). PostgreSQL `soc_triage_db` now holds
+50 cases (40 malicious / 10 benign) and 246 alert rows. New `tests/test_eval_dataset.py` (7
+tests) covers distribution, determinism, trigger-is-highest-level, evidence shape, label
+non-leakage, JSONL roundtrip, and PostgreSQL ground-truth storage. **92 tests passing** (was 85).
+`EVAL_DATABASE_URL` added to `.env.example`; `psycopg2-binary` added to requirements; README
+section added. The local `eval` schema was dropped/recreated once to move cases to the composite
+key so multiple datasets can coexist. Not committed.
+
+**Previous (2026-11-02): Portfolio repo fixed and pushed — GitHub secret-scanning block resolved.**
 Push to `origin/main` was rejected by GitHub Push Protection (GH013) because the two unpushed
 commits contained `soc-lab/suricata/rules/suricata.rules` (ET Open rule with sample Google OAuth
 strings) and `soc-lab/thehive/.env`. Fix: added root `.gitignore` (secrets, `.env*`, `*.pem`/`*.p12`,
@@ -647,6 +681,26 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-11-04 (2nd)** — Ran the labeled dataset through the real investigation engine. Added
+  `evals/scoring.py` (completion, ATT&CK any/exact, recommendation exact/lenient, timing
+  aggregates), `evals/run_eval.py` (case-bundle indexer, agent-graph replay, concurrent workers,
+  JSONL/CSV/Markdown/run-meta writers), and `tests/test_eval_runner.py`. `agent/report.py` now
+  requests an explicit `recommended_action`. Full live run: 50 trigger investigations, 3 workers,
+  45 completed; ATT&CK 43/50 (86.0%), exact 13/50 (26.0%), recommendation exact 17/50 (34.0%),
+  lenient 40/50 (80.0%); completed mean 85.0s, median 76.5s, p95 132.0s, max 329.4s. The 5
+  unfinished benign cases hit OpenRouter free-tier `429 free-models-per-day`; they are scored as
+  incomplete/incorrect and flagged in report run-notes. Added `--rescore` to regenerate scores
+  from saved JSONL without LLM calls. **99 tests passing.** Outputs in `evals/results/`. Not
+  committed.
+- **2026-11-04** — Built the labeled evaluation dataset. `evals/generator.py` deterministically
+  builds 50 incident bundles (10 each: credential stuffing, brute force, phishing, ransomware
+  precursor, benign; 246 alert docs total, 1–8 per case) with identity/EDR evidence and a SIEM
+  summary derived from the alerts. `evals/store.py` loads them into PostgreSQL schema `eval`
+  (`datasets`/`cases`/`alerts`, composite `(dataset_id, case_id)` keys) and reads/writes JSONL.
+  `python -m evals` validates, writes `evals/dataset/soc-eval-2026-11.jsonl`, and loads
+  `soc_triage_db`. Labels are generator-assigned only; a forbidden-term check rejects generated
+  prose that would leak the label. Added `tests/test_eval_dataset.py` (7 tests; 92 total passing)
+  and documented the workflow in README + `.env.example`. Not committed.
 - **2026-11-02** — Unblocked the portfolio push. GitHub GH013/Push Protection flagged
   `soc-lab/suricata/rules/suricata.rules:43616` (Google OAuth refresh token/client id/secret sample
   strings in an ET Open rule) in unpushed commit `0a525ac`; the same commit also carried

@@ -1,0 +1,20 @@
+{
+  "cursor": null,
+  "seen_ids": [],
+  "incident_seq": 0,
+  "last_incident": {
+    "incident_id": "EVAL-CS-009",
+    "report": "evals/results/reports/EVAL-CS-009.md",
+    "report_html": "evals/results/reports/EVAL-CS-009.html",
+    "at": "2026-11-04T17:14:07.016071+00:00",
+    "trigger_rule": "40112",
+    "severity": "Medium"
+  },
+  "recent_keys": [
+    {
+      "key": "002|198.51.100.33",
+      "ts": 1793812263.267338
+    }
+  ],
+  "runs": 0
+}

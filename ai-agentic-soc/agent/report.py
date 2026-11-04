@@ -41,10 +41,21 @@ Hard rules:
 4. `confidence` must be exactly one of: High, Medium, Low.
 5. `mitre_mapping` must only contain ATT&CK techniques that appear in the
    provided evidence or are the standard mapping for the observed activity.
-6. `recommended_actions` and `containment_recommendations` are ADVICE ONLY.
+6. `recommended_action` must be exactly one of: monitor, investigate, escalate,
+   contain. Pick exactly one:
+   - `monitor`: benign or expected activity; watch and close.
+   - `investigate`: suspicious but not confirmed; gather more evidence.
+   - `escalate`: confirmed hostile activity that a human/IR team must handle,
+     including blocking an external source IP, hardening authentication or
+     notifying responders. Blocking an external attacker address is escalation,
+     not containment.
+   - `contain`: act on the monitored host or account itself: isolate/quarantine
+     the endpoint, disable the account, terminate the process, or reset
+     compromised credentials.
+7. `recommended_actions` and `containment_recommendations` are ADVICE ONLY.
    The engine never executes containment automatically; a human analyst approves.
-7. Be concise and specific. No filler, no restating the prompt.
-8. Write plain prose. Do not use markdown headings inside string values.
+8. Be concise and specific. No filler, no restating the prompt.
+9. Write plain prose. Do not use markdown headings inside string values.
 
 Return a single JSON object with exactly these keys:
 {
@@ -52,6 +63,7 @@ Return a single JSON object with exactly these keys:
   "severity": string,
   "severity_rationale": string,
   "confidence": string,
+  "recommended_action": string,
   "attack_narrative": string,
   "key_findings": [string],
   "mitre_mapping": [{"technique_id": string, "technique_name": string,

@@ -32,6 +32,7 @@ EDR are schema-matched mocks, swappable for real Okta/CrowdStrike later.
 | `apis/identity/` | FastAPI mock of an Okta/Azure AD-shaped identity service with synthetic data |
 | `apis/edr/` | FastAPI mock of a CrowdStrike-shaped EDR service with synthetic telemetry |
 | `database/` | SQLAlchemy engine helper (SQLite default, Postgres via `DATABASE_URL`) |
+| `evals/` | **Labeled evaluation dataset**: deterministic 50-case ground truth, JSONL output, PostgreSQL `eval` schema |
 | `agent/` | **Background triage agent**: indexer watcher, settle window, deterministic correlation, timeline, LLM narrative, Markdown + HTML reports, desktop notification |
 | `services/triage_api/` | FastAPI control plane: queues investigations, exposes reports/jobs, records analyst decisions |
 | `frontend/` | Streamlit dashboard for case review, report viewing, and the approval gate |
@@ -76,6 +77,55 @@ Two rules shape the whole design:
   approves. The report is stamped `DRAFT — requires analyst review`.
 
 See `docs/ARCHITECTURE.md` §9–16 for the full design.
+
+## Labeled Evaluation Dataset
+
+`evals/` generates a deterministic, held-out **50-case** evaluation set: 10 cases each of
+`credential_stuffing`, `brute_force`, `phishing`, `ransomware_precursor`, and `benign`.
+Each case is an incident bundle with 1–8 Wazuh-shaped alert documents plus the identity and
+EDR evidence a triage agent would retrieve. Labels are assigned by the generator — never by
+an LLM — and are stored in PostgreSQL under the dedicated `eval` schema
+(`eval.datasets`, `eval.cases`, `eval.alerts`), so ground truth is separate from the live
+`wazuh-alerts-*` index and the operational SQLite databases.
+
+```bash
+cd ai-agentic-soc
+venv/bin/python -m evals              # validate, write JSONL, load PostgreSQL
+venv/bin/python -m evals --check      # validate only, write nothing
+venv/bin/python -m evals --no-db      # JSONL only
+```
+
+Output: `evals/dataset/soc-eval-2026-11.jsonl` (one labeled case per line). The same cases
+are loaded into `soc_triage_db` schema `eval`; override the target with `EVAL_DATABASE_URL`
+or `--database-url`. Tests: `venv/bin/python -m pytest tests/test_eval_dataset.py`.
+
+### Running the evaluation
+
+`evals.run_eval` replays each incident bundle through the **real** agent graph
+(`agent.graph.build_graph`) with an in-memory indexer adapter. It records whether the
+investigation completed, whether the predicted ATT&CK techniques match ground truth,
+whether the recommended action matches, and the processing time.
+
+```bash
+cd ai-agentic-soc
+venv/bin/python -m evals.run_eval --workers 3     # 50 trigger alerts, live LLM
+venv/bin/python -m evals.run_eval --no-llm        # deterministic baseline
+venv/bin/python -m evals.run_eval --limit 5       # smoke test
+venv/bin/python -m evals.run_eval --all-alerts    # every alert, not just triggers
+venv/bin/python -m evals.run_eval --resume        # retry incomplete investigations
+venv/bin/python -m evals.run_eval --rescore       # re-score saved JSONL, no LLM calls
+```
+
+Deliverables land in `evals/results/`:
+
+- `<dataset>-cases-llm-EVALUATION.md` — headline accuracy, per-label breakdown,
+  confusion matrix, per-case results and review list
+- `<dataset>-cases-llm-PROCESSING_TIMES.md` — overall/per-label/per-case timing
+- `<dataset>-cases-llm-evaluation.jsonl` / `.csv` — raw records incl. the full analysis
+- `<dataset>-cases-llm-processing-times.csv` and `-run-meta.json`
+
+Scoring definitions live in `evals/scoring.py` (and are unit-tested in
+`tests/test_eval_runner.py`).
 
 ## Triage API + Dashboard
 

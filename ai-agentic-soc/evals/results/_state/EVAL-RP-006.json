@@ -1,0 +1,20 @@
+{
+  "cursor": null,
+  "seen_ids": [],
+  "incident_seq": 0,
+  "last_incident": {
+    "incident_id": "EVAL-RP-006",
+    "report": "evals/results/reports/EVAL-RP-006.md",
+    "report_html": "evals/results/reports/EVAL-RP-006.html",
+    "at": "2026-11-04T17:25:29.273943+00:00",
+    "trigger_rule": "100046",
+    "severity": "Critical"
+  },
+  "recent_keys": [
+    {
+      "key": "008|192.0.2.15",
+      "ts": 1793813051.123169
+    }
+  ],
+  "runs": 0
+}
