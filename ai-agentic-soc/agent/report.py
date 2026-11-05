@@ -39,19 +39,31 @@ Hard rules:
    must never be described as a successful compromise.
 3. `severity` must be exactly one of: Informational, Low, Medium, High, Critical.
 4. `confidence` must be exactly one of: High, Medium, Low.
-5. `mitre_mapping` must only contain ATT&CK techniques that appear in the
-   provided evidence or are the standard mapping for the observed activity.
+5. `mitre_mapping` must only contain ATT&CK techniques supported by the
+   observed evidence. For routine/benign administrative or system activity
+   (e.g., normal logins, scheduled FIM changes, expected service events) with
+   no malicious indicators, return an empty list `[]`. Do not map techniques
+   just because a normal event type *could* appear in an attack.
 6. `recommended_action` must be exactly one of: monitor, investigate, escalate,
-   contain. Pick exactly one:
-   - `monitor`: benign or expected activity; watch and close.
-   - `investigate`: suspicious but not confirmed; gather more evidence.
-   - `escalate`: confirmed hostile activity that a human/IR team must handle,
-     including blocking an external source IP, hardening authentication or
-     notifying responders. Blocking an external attacker address is escalation,
-     not containment.
-   - `contain`: act on the monitored host or account itself: isolate/quarantine
-     the endpoint, disable the account, terminate the process, or reset
-     compromised credentials.
+   contain. Pick exactly one using these decision rules (apply in order):
+   - `contain`: confirmed compromise of the monitored host or account, or
+     active/destructive impact on the host. Examples: authentication failures
+     followed by a successful login for the same target (compromised account),
+     ransomware/encryption, shadow-copy deletion, persistence on the host,
+     malicious process execution requiring endpoint isolation, or credentials
+     that must be reset/disabled. Containment actions target the endpoint or
+     account (isolate host, disable/lock account, reset credentials, kill
+     process).
+   - `escalate`: confirmed hostile activity requiring human/IR handling where
+     the primary response is not immediate host/account containment. Examples:
+     blocking an external attacker source IP, threat-hunting/IR coordination,
+     or confirmed malicious delivery (e.g., phishing payload execution signal)
+     that needs response ownership even if full impact is unconfirmed.
+   - `investigate`: suspicious or incomplete evidence; gather more context
+     before declaring compromise or taking disruptive action.
+   - `monitor`: benign, expected, or clearly non-malicious activity; watch and
+     close. Blocking an external attacker source address is `escalate` unless
+     the endpoint/account itself must be contained.
 7. `recommended_actions` and `containment_recommendations` are ADVICE ONLY.
    The engine never executes containment automatically; a human analyst approves.
 8. Be concise and specific. No filler, no restating the prompt.
@@ -157,6 +169,20 @@ def build_analysis_prompt(
         "unique (second, source, user) tuples. Wazuh decodes the same failed login "
         "through sshd, PAM and syslog-auth, so the three numbers differ legitimately. "
         "Quote the right one for the claim you make."
+    )
+    lines.append(
+        "  ACTION GUIDE (apply when choosing `recommended_action`): "
+        "If `auth_failures_observed` AND `auth_success_observed` are both true for the "
+        "same target, the account/host was likely compromised -> `contain` (reset/disable "
+        "the account, review the session, and isolate if needed). "
+        "If `file_integrity_change_observed` or `privilege_change_observed` indicate active "
+        "host impact/persistence, or the activity is destructive (e.g., encryption/shadow-copy "
+        "deletion), -> `contain`. "
+        "Confirmed hostile activity without confirmed host/account compromise (e.g., external "
+        "brute force blocked with no success, phishing delivery needing IR ownership, or "
+        "blocking an external source IP) -> `escalate`. "
+        "If there are no malicious indicators and activity appears routine/expected -> "
+        "`monitor` and set `mitre_mapping` to `[]`."
     )
     if flags.get("source_equals_agent_ip"):
         lines.append(

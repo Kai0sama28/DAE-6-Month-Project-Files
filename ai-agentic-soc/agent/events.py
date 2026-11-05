@@ -77,9 +77,19 @@ RULE_PHASES: dict[str, str] = {
     "504": "SYSTEM",
     "250": "SYSTEM",
     "520": "SYSTEM",
+    "100002": "AUTH_FAILURE",
     "100030": "AUTH_SUCCESS",
     "100031": "AUTH_FAILURE",
     "100032": "INTEGRITY",
+    "100040": "EXECUTION",
+    "100045": "INTEGRITY",
+    "100046": "INTEGRITY",
+    "19005": "INTEGRITY",
+    "23504": "INTEGRITY",
+    "61110": "SYSTEM",
+    "61138": "PERSISTENCE",
+    "67022": "AUTH_SUCCESS",
+    "67028": "PRIVILEGE",
 }
 
 # Rule group fragment -> phase (lower-case match).
