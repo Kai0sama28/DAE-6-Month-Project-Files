@@ -8,7 +8,43 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest (2026-11-04, 2nd): LLM evaluation run against the labeled dataset — 45/50 completed.**
+**Latest (2026-11-09): Suricata->Wazuh feed stopped after daily log rotation — fixed and re-verified.**
+Suricata 8.0.7 was still running and detecting (53,384 rules, alert counters incrementing), but
+`/var/log/suricata/eve.json` was 0 bytes and Wazuh had no Suricata alerts after the 00:05 rotation;
+the last was `2026-11-08T04:56:10Z` (rule 86601). Cause: logrotate moved `eve.json` to
+`eve.json.1.gz`, leaving Suricata (and the Wazuh logcollector) holding the old inode. Fix:
+`suricatasc -c reopen-log-files` then `systemctl restart wazuh-agent` on Kali. Replayed
+`/tmp/responder.pcap`; the Wazuh indexer immediately showed 7 new alerts: **100059** ARP gateway
+claim, **100055** SMB NTLMSSP, **100052** NBT-NS response, **100053** NBT-NS WPAD, **100050**
+LLMNR response, **100051** LLMNR WPAD. Agent `active`, Suricata uptime ~3.9 days. **New gotcha:**
+after Suricata's daily rotation, run `suricatasc -c reopen-log-files` (or restart Suricata) and
+restart the Wazuh agent; otherwise the pipeline silently stops while Suricata keeps alerting.
+
+**Previous (2026-11-05): Suricata 8.0.7 -> Wazuh integration live on Kali — Responder/LLMNR/NBT-NS/NTLM/ARP
+detections verified end-to-end.**
+Installed Suricata 8.0.7 on Kali agent 002 (the apt index was stale; refreshed the Kali archive key +
+`apt-get update`). Wrote `soc-lab/suricata/rules/custom-responder.rules` (SIDs 9000001-9000008: LLMNR/NBT-NS/
+mDNS WPAD, SMB NTLMSSP, HTTP NTLM, HTTP 407; the ARP limitation is documented in the file). Enabled Suricata's
+`arp` eve-log type, added `custom-responder.rules` to `rule-files`, and ran `suricata-update` (53,376 ET rules).
+Added a JSON localfile for `/var/log/suricata/eve.json` to the Kali Wazuh agent. Added Wazuh rules
+**100050-100061** to the manager's `local_rules.xml` (Responder/credential/ARP; MITRE T1557.001/T1557.002/T1040).
+Built a synthetic Responder pcap generator `soc-lab/suricata/tools/make_responder_pcap.py` and replayed it on
+Kali. Wazuh indexer confirms: **100050** (LLMNR response), **100051** (LLMNR WPAD lookup), **100052** (NBT-NS
+response), **100053** (NBT-NS WPAD lookup), **100055** (SMB NTLMSSP), **100056** (HTTP NTLM), **100057** (HTTP
+407), **100059** (ARP gateway claim). **Key gotcha:** Suricata 8.0.x cannot load `alert arp` rules (ARP
+detection is 9.x-only); ARP spoofing is detected via the eve `arp` logger + Wazuh rules 100058/100059. The Kali
+agent `ossec.conf` has two `<ossec_config>` blocks; an initial `sed` inserted the localfile twice and caused a
+"log file duplicated" warning — removed the duplicate, agent restarted, one localfile remains. Live
+Parrot->Kali test succeeded: Responder ran on Parrot `enp0s1` (`192.168.64.5`); Wazuh fired **100052**
+(NBT-NS response from 192.168.64.5, level 10), **100053** (NBT-NS WPAD lookup), **100055** (SMB NTLMSSP),
+and **100056** (HTTP NTLM) live; the level-10 NBT-NS alert also queued a triage investigation in the
+background agent (settling at 20:03:58Z). LLMNR response (100050) and ARP (100059) remain verified via pcap replay;
+UTM's shared network did not deliver Kali-originated LLMNR multicast to Parrot, so the trigger was sent
+from the Mac with Kali's source IP (NBT-NS broadcast worked). Parrot has no guest agent.
+**Manager rules live outside the repo** at `/Users/Adult/Desktop/wazuh/wazuh-docker/single-node/config/wazuh_cluster/rules/local_rules.xml`;
+the Suricata rules + generator are under `/Users/Adult/Desktop/soc-lab` (gitignored). Not committed.
+
+**Previous (2026-11-04, 2nd): LLM evaluation run against the labeled dataset — 45/50 completed.**
 Built `evals/scoring.py`, `evals/run_eval.py`, and `tests/test_eval_runner.py`; the harness replays
 each case bundle through the real `agent.graph` (skips watch, disables identity/EDR + notifications,
 stubs `WazuhClient`) using the dataset indexer. `agent/report.py` now asks for an explicit
@@ -616,6 +652,10 @@ What exists today (capstone):
   wazuh-docker compose). Verified working 2026-10-01.
 
 **Next steps**
+- Suricata/Wazuh: run a live Parrot->Kali Responder test (or install Responder on Parrot), add
+  mDNS coverage to the pcap generator, and consider a Wazuh correlation rule for repeated
+  poisoning responses. The manager rule file is outside the repo; keep a sanitized copy of the
+  custom rules in the portfolio if this becomes a deliverable.
 1. Finish the dashboard: add a dedicated timeline/MITRE view (the API already serves parsed case
    metadata and the full report), plus queue/job history and a clear DRAFT/approval state.
 2. Wire the persisted analyst decision into the action layer (TheHive case update or an explicit
@@ -681,6 +721,46 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-11-09** — Diagnosed and fixed a silent Suricata->Wazuh outage. Suricata was running and
+  incrementing alert counters, but `eve.json` was 0 bytes after the 00:05 daily rotation and Wazuh
+  had no Suricata alerts after `2026-11-08T04:56:10Z`. Root cause: logrotate rotated `eve.json` to
+  `eve.json.1.gz` without reopening Suricata's or the Wazuh logcollector's file descriptor. Fix:
+  `suricatasc -c reopen-log-files` + `systemctl restart wazuh-agent`. Replayed
+  `/tmp/responder.pcap`; indexer confirmed 100050/100051/100052/100053/100055/100059. New
+  operational gotcha: run `reopen-log-files` (or restart Suricata) after rotation and restart the
+  agent. Not committed.
+- **2026-11-05 (Suricata)** — Wired Suricata 8.0.7 into Wazuh on Kali agent 002. Added
+  `custom-responder.rules` (SIDs 9000001-9000008) for LLMNR/NBT-NS/mDNS WPAD, SMB NTLMSSP, HTTP
+  NTLM and HTTP 407; enabled the Suricata `arp` eve-log type; added Wazuh rules 100050-100061
+  (T1557.001/T1557.002/T1040) to the manager's `local_rules.xml`; added a JSON localfile for
+  `/var/log/suricata/eve.json` to the agent. Built `soc-lab/suricata/tools/make_responder_pcap.py`
+  and replayed the pcap on Kali; the Wazuh indexer shows 100050/100051/100052/100053/100055/
+  100056/100057/100059. Key finding: Suricata 8.0.x rejects `alert arp` signatures; ARP is handled
+  by the eve `arp` logger + Wazuh. Fixed a stale Kali apt index/key and a duplicated agent
+  localfile caused by two `<ossec_config>` blocks. `suricata-update` loaded 53,376 ET rules. Live
+  Parrot->Kali test succeeded with Responder on Parrot `enp0s1` (`192.168.64.5`): indexer shows
+  100052 (NBT-NS response from 192.168.64.5), 100053 (NBT-NS WPAD lookup), 100055 (SMB NTLMSSP),
+  and 100056 (HTTP NTLM); the level-10 alert also queued a triage investigation in `agent.runner`.
+  LLMNR response and ARP remain pcap-replay verified; UTM shared networking
+  blocked Kali-originated LLMNR multicast, so the LLMNR/NBT-NS triggers were sent from the Mac with
+  Kali's source IP. Not committed.
+- **2026-11-05** — Diagnosed a "Parrot credential-harvester test produced no alerts" report.
+  Correction after follow-up: the test was launched **from Parrot (192.168.64.5) against Kali
+  (192.168.64.3)**, and Kali **is** an active Wazuh agent — so the target side was enrolled. Root
+  cause is telemetry: Kali's agent only collects host logs (journald, nginx/apache, dpkg, command
+  outputs) and Kali is listening only on SSH `22`. Indexer shows **zero** auth-failure/sshd/web
+  events from Kali — the last 3 days are only 22 benign `5501`/`5502`/`533`/`5402` alerts. A
+  credential harvester (SET/Responder/phishing or on-wire capture) writes its evidence on the
+  **attacker** host or the network, not in Kali's host logs; Wazuh is not a network IDS and at that
+  point Suricata was not wired into Wazuh (resolved later the same day — see the newer 2026-11-05
+  Suricata entry above). No log → no rule → no alert → `agent.runner` never runs. Parrot is
+  also **not** a Wazuh agent (API: only `000`, `002` Kali, `007` Windows, `008` Ubuntu
+  disconnected), so the attacker side is unmonitored too. The triage agent only starts
+  investigations on Wazuh rule level ≥ `AGENT_TRIGGER_MIN_LEVEL` (10). Daemon `agent.runner` is
+  alive (PID 71036), last report `SOC-20261027-011`, Streamlit on `127.0.0.1:8501`. Parrot has no
+  qemu-guest-agent (`utmctl exec` fails). To detect this class: enroll Parrot, add auditd/process/
+  FIM rules, and/or integrate Suricata `eve.json`; a hydra SSH run from Parrot → Kali is the
+  reliable pipeline test (`5760` → `5763`/`100002`). No code changes.
 - **2026-11-04 (2nd)** — Ran the labeled dataset through the real investigation engine. Added
   `evals/scoring.py` (completion, ATT&CK any/exact, recommendation exact/lenient, timing
   aggregates), `evals/run_eval.py` (case-bundle indexer, agent-graph replay, concurrent workers,
