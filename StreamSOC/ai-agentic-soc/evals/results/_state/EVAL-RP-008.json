@@ -1,0 +1,20 @@
+{
+  "cursor": null,
+  "seen_ids": [],
+  "incident_seq": 0,
+  "last_incident": {
+    "incident_id": "EVAL-RP-008",
+    "report": "evals/results/reports/EVAL-RP-008.md",
+    "report_html": "evals/results/reports/EVAL-RP-008.html",
+    "at": "2026-11-04T17:26:20.624400+00:00",
+    "trigger_rule": "100046",
+    "severity": "High"
+  },
+  "recent_keys": [
+    {
+      "key": "008|192.0.2.15",
+      "ts": 1793813093.510027
+    }
+  ],
+  "runs": 0
+}

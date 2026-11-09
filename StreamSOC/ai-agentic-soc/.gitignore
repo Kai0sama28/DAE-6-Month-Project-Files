@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.env
+venv/
+data/
+.pytest_cache/
+*.db
+*.sqlite3
+.DS_Store
+
+# Credentials — do not commit screenshots containing secrets
+screenshots/*password*
+screenshots/*token*

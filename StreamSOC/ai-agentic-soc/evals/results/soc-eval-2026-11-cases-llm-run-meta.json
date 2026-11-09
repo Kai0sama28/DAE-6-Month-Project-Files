@@ -1,0 +1,216 @@
+{
+  "dataset_id": "soc-eval-2026-11",
+  "mode": "live LLM",
+  "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "scope": "case-trigger",
+  "rescored_at": "2026-11-04T17:33:22.589321+00:00",
+  "runs": 50,
+  "summary": {
+    "total": 50,
+    "completed": 45,
+    "completion_rate_pct": 90.0,
+    "attack_correct": 43,
+    "attack_accuracy_pct": 86.0,
+    "attack_exact": 13,
+    "attack_exact_pct": 26.0,
+    "recommendation_correct": 17,
+    "recommendation_accuracy_pct": 34.0,
+    "recommendation_lenient": 40,
+    "recommendation_lenient_pct": 80.0,
+    "times": {
+      "count": 45,
+      "total_seconds": 3823.354,
+      "mean_seconds": 84.963,
+      "median_seconds": 76.476,
+      "min_seconds": 31.243,
+      "max_seconds": 329.361,
+      "p95_seconds": 132.043
+    },
+    "times_all": {
+      "count": 50,
+      "total_seconds": 3824.573,
+      "mean_seconds": 76.491,
+      "median_seconds": 72.16,
+      "min_seconds": 0.195,
+      "max_seconds": 329.361,
+      "p95_seconds": 132.043
+    },
+    "by_label": {
+      "benign": {
+        "cases": 10,
+        "completed": 5,
+        "attack_correct": 3,
+        "attack_exact": 3,
+        "recommendation_correct": 3,
+        "recommendation_lenient": 5,
+        "completion_rate_pct": 50.0,
+        "attack_accuracy_pct": 30.0,
+        "recommendation_accuracy_pct": 30.0,
+        "times": {
+          "count": 5,
+          "total_seconds": 210.311,
+          "mean_seconds": 42.062,
+          "median_seconds": 45.027,
+          "min_seconds": 31.243,
+          "max_seconds": 50.515,
+          "p95_seconds": 50.515
+        },
+        "times_all": {
+          "count": 10,
+          "total_seconds": 211.53,
+          "mean_seconds": 21.153,
+          "median_seconds": 31.243,
+          "min_seconds": 0.195,
+          "max_seconds": 50.515,
+          "p95_seconds": 50.515
+        }
+      },
+      "brute_force": {
+        "cases": 10,
+        "completed": 10,
+        "attack_correct": 10,
+        "attack_exact": 7,
+        "recommendation_correct": 6,
+        "recommendation_lenient": 10,
+        "completion_rate_pct": 100.0,
+        "attack_accuracy_pct": 100.0,
+        "recommendation_accuracy_pct": 60.0,
+        "times": {
+          "count": 10,
+          "total_seconds": 743.008,
+          "mean_seconds": 74.301,
+          "median_seconds": 80.838,
+          "min_seconds": 47.429,
+          "max_seconds": 95.3,
+          "p95_seconds": 95.3
+        },
+        "times_all": {
+          "count": 10,
+          "total_seconds": 743.008,
+          "mean_seconds": 74.301,
+          "median_seconds": 80.838,
+          "min_seconds": 47.429,
+          "max_seconds": 95.3,
+          "p95_seconds": 95.3
+        }
+      },
+      "credential_stuffing": {
+        "cases": 10,
+        "completed": 10,
+        "attack_correct": 10,
+        "attack_exact": 0,
+        "recommendation_correct": 7,
+        "recommendation_lenient": 8,
+        "completion_rate_pct": 100.0,
+        "attack_accuracy_pct": 100.0,
+        "recommendation_accuracy_pct": 70.0,
+        "times": {
+          "count": 10,
+          "total_seconds": 1193.717,
+          "mean_seconds": 119.372,
+          "median_seconds": 98.267,
+          "min_seconds": 53.846,
+          "max_seconds": 329.361,
+          "p95_seconds": 329.361
+        },
+        "times_all": {
+          "count": 10,
+          "total_seconds": 1193.717,
+          "mean_seconds": 119.372,
+          "median_seconds": 98.267,
+          "min_seconds": 53.846,
+          "max_seconds": 329.361,
+          "p95_seconds": 329.361
+        }
+      },
+      "phishing": {
+        "cases": 10,
+        "completed": 10,
+        "attack_correct": 10,
+        "attack_exact": 3,
+        "recommendation_correct": 1,
+        "recommendation_lenient": 9,
+        "completion_rate_pct": 100.0,
+        "attack_accuracy_pct": 100.0,
+        "recommendation_accuracy_pct": 10.0,
+        "times": {
+          "count": 10,
+          "total_seconds": 943.843,
+          "mean_seconds": 94.384,
+          "median_seconds": 89.431,
+          "min_seconds": 68.692,
+          "max_seconds": 132.043,
+          "p95_seconds": 132.043
+        },
+        "times_all": {
+          "count": 10,
+          "total_seconds": 943.843,
+          "mean_seconds": 94.384,
+          "median_seconds": 89.431,
+          "min_seconds": 68.692,
+          "max_seconds": 132.043,
+          "p95_seconds": 132.043
+        }
+      },
+      "ransomware_precursor": {
+        "cases": 10,
+        "completed": 10,
+        "attack_correct": 10,
+        "attack_exact": 0,
+        "recommendation_correct": 0,
+        "recommendation_lenient": 8,
+        "completion_rate_pct": 100.0,
+        "attack_accuracy_pct": 100.0,
+        "recommendation_accuracy_pct": 0.0,
+        "times": {
+          "count": 10,
+          "total_seconds": 732.475,
+          "mean_seconds": 73.248,
+          "median_seconds": 69.498,
+          "min_seconds": 47.837,
+          "max_seconds": 121.71,
+          "p95_seconds": 121.71
+        },
+        "times_all": {
+          "count": 10,
+          "total_seconds": 732.475,
+          "mean_seconds": 73.248,
+          "median_seconds": 69.498,
+          "min_seconds": 47.837,
+          "max_seconds": 121.71,
+          "p95_seconds": 121.71
+        }
+      }
+    },
+    "confusion": {
+      "contain": {
+        "contain": 1,
+        "escalate": 12,
+        "investigate": 5,
+        "monitor": 0,
+        "unknown": 0
+      },
+      "escalate": {
+        "contain": 0,
+        "escalate": 13,
+        "investigate": 9,
+        "monitor": 0,
+        "unknown": 0
+      },
+      "monitor": {
+        "contain": 0,
+        "escalate": 0,
+        "investigate": 2,
+        "monitor": 3,
+        "unknown": 5
+      }
+    }
+  },
+  "outputs": {
+    "jsonl": "evals/results/soc-eval-2026-11-cases-llm-evaluation.jsonl",
+    "csv": "evals/results/soc-eval-2026-11-cases-llm-evaluation.csv",
+    "processing_times_csv": "evals/results/soc-eval-2026-11-cases-llm-processing-times.csv",
+    "evaluation_markdown": "evals/results/soc-eval-2026-11-cases-llm-EVALUATION.md",
+    "processing_times_markdown": "evals/results/soc-eval-2026-11-cases-llm-PROCESSING_TIMES.md"
+  }
+}

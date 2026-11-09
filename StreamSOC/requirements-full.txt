@@ -1,0 +1,3 @@
+# Full stack: dashboard + triage API + LangGraph agent + evaluation harness
+-r ai-agentic-soc/requirements.txt
+-r requirements.txt

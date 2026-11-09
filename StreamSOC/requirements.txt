@@ -1,0 +1,4 @@
+# StreamSOC dashboard (local report mode + API client)
+streamlit>=1.50
+httpx>=0.28
+pandas>=2.0
