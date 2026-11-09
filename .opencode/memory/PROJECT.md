@@ -8,7 +8,17 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest (2026-11-09): Suricata->Wazuh feed stopped after daily log rotation — fixed and re-verified.**
+**Latest (2026-11-09, docs): Wrote the full developer documentation set.**
+Created `ai-agentic-soc/docs/TECHNICAL_DOCUMENTATION.md` (project overview, architecture
+diagrams, folder structure, installation guide, how-to-run, API documentation for the
+identity/EDR/Triage APIs, database schema for SQLite + PostgreSQL `eval`, configuration
+reference, testing, troubleshooting, status/roadmap). Updated `ai-agentic-soc/README.md`
+with a Documentation section, corrected the test count to **99 passing**, added the
+`venv/bin/python` command form, and fixed the Wazuh-API scope claim (agent inventory only;
+alerts come from the indexer). Re-ran `PYTHONPATH=. venv/bin/python -m pytest` from
+`ai-agentic-soc/`: **99 passed** (21 warnings, 4.97s). Docs are uncommitted.
+
+**Previous (2026-11-09): Suricata->Wazuh feed stopped after daily log rotation — fixed and re-verified.**
 Suricata 8.0.7 was still running and detecting (53,384 rules, alert counters incrementing), but
 `/var/log/suricata/eve.json` was 0 bytes and Wazuh had no Suricata alerts after the 00:05 rotation;
 the last was `2026-11-08T04:56:10Z` (rule 86601). Cause: logrotate moved `eve.json` to
@@ -721,6 +731,13 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-11-09 (docs)** — Added `ai-agentic-soc/docs/TECHNICAL_DOCUMENTATION.md` covering
+  project overview, architecture diagrams, folder structure, installation, how-to-run, API
+  reference (identity/EDR/Triage), SQLite + PostgreSQL `eval` schemas, configuration,
+  testing, troubleshooting and roadmap. Updated `ai-agentic-soc/README.md` with a
+  Documentation section, the `venv/bin/python` command form, the corrected 99-test count,
+  and the Wazuh-API scope (agent inventory only; alerts from the indexer). Verified
+  `99 passed` with `PYTHONPATH=. venv/bin/python -m pytest`. Not committed.
 - **2026-11-09** — Diagnosed and fixed a silent Suricata->Wazuh outage. Suricata was running and
   incrementing alert counters, but `eve.json` was 0 bytes after the 00:05 daily rotation and Wazuh
   had no Suricata alerts after `2026-11-08T04:56:10Z`. Root cause: logrotate rotated `eve.json` to

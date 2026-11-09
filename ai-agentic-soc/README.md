@@ -20,8 +20,29 @@ EDR API (mock, Falcon-shaped)   ──►  endpoint process/network telemetry
 
 Wazuh is the real SIEM **and** the alert source. Wazuh 4.x exposes no alerts API route, so
 alerts are read from its indexer (`wazuh-alerts-*`), the same store the dashboard uses;
-the Wazuh API supplies agents, rules and status. See `docs/ARCHITECTURE.md`. Identity and
+the Wazuh API supplies the active agent inventory. See `docs/ARCHITECTURE.md`. Identity and
 EDR are schema-matched mocks, swappable for real Okta/CrowdStrike later.
+
+## Documentation
+
+The full developer reference is **[`docs/TECHNICAL_DOCUMENTATION.md`](docs/TECHNICAL_DOCUMENTATION.md)**.
+It covers:
+
+| Section | Contents |
+|---|---|
+| Project Overview | Capabilities, evidence pillars, design principles, non-goals |
+| Architecture | Diagrams, runtime components, node-by-node agent pipeline |
+| Folder Structure | Annotated repository tree |
+| Installation Guide | Prerequisites, venv, `.env`, Wazuh connectivity, tests |
+| How to Run | Agent, Triage API, dashboard, evaluation, common workflows |
+| API Documentation | Identity mock, EDR mock, Triage API request/response examples |
+| Database Schema | SQLite operational DBs, PostgreSQL `eval` schema, JSON state |
+| Configuration | Every environment variable and default |
+| Testing | Test layout and how to run the suite |
+| Troubleshooting | Python 3.9, Wazuh 4.x, free-tier LLM, Suricata rotation, ports |
+
+Design rationale lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Agent enrollment
+status lives in [`docs/AGENT_DEPLOYMENT_STATUS.md`](docs/AGENT_DEPLOYMENT_STATUS.md).
 
 ## Repository Layout
 
@@ -36,9 +57,9 @@ EDR are schema-matched mocks, swappable for real Okta/CrowdStrike later.
 | `agent/` | **Background triage agent**: indexer watcher, settle window, deterministic correlation, timeline, LLM narrative, Markdown + HTML reports, desktop notification |
 | `services/triage_api/` | FastAPI control plane: queues investigations, exposes reports/jobs, records analyst decisions |
 | `frontend/` | Streamlit dashboard for case review, report viewing, and the approval gate |
-| `tests/` | Unit + end-to-end integration tests (85 passing) |
+| `tests/` | Unit + end-to-end integration tests (99 passing) |
 | `scripts/` | One-shot tools: seed data, test the live Wazuh connection |
-| `docs/` | Design and architecture documentation |
+| `docs/` | Architecture, deployment status, and the full technical documentation |
 
 ## Background Triage Agent
 
@@ -158,22 +179,26 @@ authentication; keep both on loopback or put them behind an authenticated proxy.
 
 ## Quick Start
 
+See [`docs/TECHNICAL_DOCUMENTATION.md`](docs/TECHNICAL_DOCUMENTATION.md#4-installation-guide)
+for the complete installation guide.
+
 ```bash
+cd ai-agentic-soc
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 
-cp .env.example .env      # then fill in your Wazuh API credentials
+cp .env.example .env      # then fill in your Wazuh API/indexer credentials
 
 # Run the Wazuh connection check (needs .env credentials)
-python scripts/test_wazuh_connection.py
+venv/bin/python scripts/test_wazuh_connection.py
 
 # Run both mock evidence APIs
-uvicorn apis.identity.app:app --port 8001
-uvicorn apis.edr.app:app --port 8002
+venv/bin/uvicorn apis.identity.app:app --port 8001
+venv/bin/uvicorn apis.edr.app:app --port 8002
 
 # Run the full test suite
-pytest
+PYTHONPATH=. venv/bin/python -m pytest
 ```
 
 ## Wazuh Environment Variables
@@ -211,6 +236,6 @@ pytest
 - **Weeks 1–4 (done here):** alert schema + normalizer, identity API, Wazuh connector, EDR API, end-to-end API integration.
 - **Weeks 5–7 (done here):** LangGraph supervisor agent, tool-calling to the three pillars, correlation + MITRE mapping.
 - **Weeks 8–11 (done here):** background triage agent, report synthesis, desktop notification, deterministic correlation with burst delineation.
-- **Weeks 11–12 (in progress):** Streamlit dashboard + FastAPI control plane scaffolded; next are timeline/MITRE views, TheHive write-back, labeled evaluation, docs + portfolio case study.
+- **Weeks 11–12 (in progress):** Streamlit dashboard + FastAPI control plane, labeled evaluation dataset and runner, and full technical documentation are done. Remaining: dedicated timeline/MITRE dashboard views, wiring analyst decisions into an action layer (TheHive or approved executor), and portfolio case study.
 
 Project-level design decisions and the change log live in `docs/`.
