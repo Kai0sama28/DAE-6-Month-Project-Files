@@ -38,23 +38,15 @@ title: Home
 
 **Future goals:** {{ site.career_aspirations.future_goals }}
 
-## Featured Projects
+## Featured Project
 
-### [PROJECT 1 NAME]
+### AI-Agentic SOC Triage Engine
 
-![Project 1 image placeholder]({{ '/assets/images/project-placeholder.svg' | relative_url }})
+![StreamSOC overview dashboard]({{ '/assets/images/ai-agentic-soc/dashboard-overview.png' | relative_url }})
 
-[PROJECT 1 DESCRIPTION]
+A human-in-the-loop investigation pipeline that turns real Wazuh alerts into a correlated timeline, MITRE ATT&CK mapping, evidence-backed risk narrative, and analyst approval decision.
 
-[Project repository or live demo](#)
-
-### [PROJECT 2 NAME]
-
-![Project 2 image placeholder]({{ '/assets/images/project-placeholder.svg' | relative_url }})
-
-[PROJECT 2 DESCRIPTION]
-
-[Project repository or live demo](#)
+[Read the case study]({{ '/projects/ai-agentic-soc/' | relative_url }}) · [View the repository](https://github.com/Kai0sama28/DAE-6-Month-Project-Files/tree/main/ai-agentic-soc) · [All projects]({{ '/projects.html' | relative_url }})
 
 ## Contact
 

@@ -35,7 +35,7 @@ def clean(value: Any) -> str:
     text = text.replace("\\|", "|")
     if text.startswith("**") and text.endswith("**") and len(text) > 4:
         text = text[2:-2].strip()
-    text = text.replace("`", "")
+    text = text.replace("**", "").replace("`", "")
     return text.strip()
 
 

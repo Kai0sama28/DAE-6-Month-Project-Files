@@ -41,6 +41,10 @@ It covers:
 | Testing | Test layout and how to run the suite |
 | Troubleshooting | Python 3.9, Wazuh 4.x, free-tier LLM, Suricata rotation, ports |
 
+For a 9-minute walkthrough of the full flow (receive alert → investigate → timeline → ATT&CK →
+AI report → approve → close), with a word-for-word script, video shot list, and fallback plan,
+see **[`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md)**.
+
 Design rationale lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Agent enrollment
 status lives in [`docs/AGENT_DEPLOYMENT_STATUS.md`](docs/AGENT_DEPLOYMENT_STATUS.md).
 

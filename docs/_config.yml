@@ -49,13 +49,14 @@ qr_code:
 
 # Projects
 projects:
-  - name: "[PROJECT 1 NAME]"
-    image: "/assets/images/project-placeholder.svg"
-    description: "[PROJECT 1 DESCRIPTION]"
-    repo_url: "[PROJECT 1 GITHUB URL]"
-    demo_url: "[PROJECT 1 LIVE URL, IF APPLICABLE]"
-    contribution: "[YOUR CONTRIBUTION]"
-    tools: "[TOOLS OR TECHNOLOGIES]"
+  - name: "AI-Agentic SOC Triage Engine"
+    image: "/assets/images/ai-agentic-soc/dashboard-overview.png"
+    description: "A human-in-the-loop investigation pipeline that turns real Wazuh alerts into a correlated timeline, MITRE ATT&CK mapping, evidence-backed risk narrative, and analyst approval decision."
+    repo_url: "https://github.com/Kai0sama28/DAE-6-Month-Project-Files/tree/main/ai-agentic-soc"
+    demo_url: ""
+    case_study_url: "/projects/ai-agentic-soc/"
+    contribution: "Designed and built the end-to-end capstone: Wazuh indexer integration, mock identity/EDR evidence services, LangGraph investigation pipeline, deterministic correlation and burst splitting, LLM narrative, FastAPI control plane, StreamSOC dashboard, labeled 50-case evaluation, and documentation."
+    tools: "Python, LangGraph, Wazuh 4.14.7, OpenSearch, FastAPI, Streamlit, SQLite, PostgreSQL, Docker, Suricata"
   - name: "[PROJECT 2 NAME]"
     image: "/assets/images/project-placeholder.svg"
     description: "[PROJECT 2 DESCRIPTION]"
