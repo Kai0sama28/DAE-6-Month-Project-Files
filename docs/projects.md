@@ -30,6 +30,9 @@ Choose **2–3 of your strongest projects** for the finished portfolio.
 {% if project.demo_url != "" %}
 - **Live demo:** [{{ project.demo_url }}]({{ project.demo_url }})
 {% endif %}
+{% if project.case_study_url and project.case_study_url != "" %}
+- **Case study:** [Read the full project case study]({{ project.case_study_url | relative_url }})
+{% endif %}
 - **What I contributed:** {{ project.contribution }}
 - **Tools/technologies:** {{ project.tools }}
 

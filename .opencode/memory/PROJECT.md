@@ -8,7 +8,30 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest (2026-11-09, docs): Wrote the full developer documentation set.**
+**Latest (2026-11-10, portfolio): Wrote the AI-Agentic SOC portfolio case study + captured dashboard screenshots.**
+Created `docs/ai-agentic-soc-case-study.md` (Jekyll permalink `/projects/ai-agentic-soc/`) covering the
+problem, motivation, architecture, technologies, challenges, lessons learned, measured results, and
+honest scope limits. Captured seven StreamSOC screenshots into `docs/assets/images/ai-agentic-soc/`:
+overview, case summary, timeline, evidence/deterministic flags, MITRE ATT&CK, approved decision, and
+evaluation results. The screenshots come from the running StreamSOC dashboard backed by the Triage API
+and the real local reports; `SOC-20261105-013` (High/High, 250 events, 1m44s trigger burst, Responder
+chain) is the sample incident. Recorded an analyst approval decision for that case through the dashboard
+(`ai-agentic-soc/data/triage_decisions.json`); no containment was executed. Added the project + case
+study link to `docs/_config.yml`, `docs/projects.md`, and the home page `docs/index.md`. Fixed a
+StreamSOC report-parser bug that returned `n/a` for `Attack duration (trigger burst)` when the report
+label was bold. Re-ran the engine suite from `ai-agentic-soc/`: **99 passed**. All docs/site changes are
+uncommitted.
+
+**Previous (2026-11-10, docs): Wrote the 9-minute demo script + video plan.**
+Created `ai-agentic-soc/docs/DEMO_SCRIPT.md`: seven-stage flow (receive alert → run
+investigation → timeline → ATT&CK → AI report → approve → close), a word-for-word 9-minute
+script with stage directions, a stage-by-stage "what the AI is doing vs what is deterministic"
+reference, a 15-minute pre-demo checklist, video shot list/export spec, failure fallbacks,
+Q&A cheat sheet, and exact commands/endpoints. It is explicit that the current build records
+the analyst decision but does **not** auto-close Wazuh/TheHive or execute containment. Added a
+pointer in `ai-agentic-soc/README.md`. Docs are uncommitted.
+
+**Previous (2026-11-09, docs): Wrote the full developer documentation set.**
 Created `ai-agentic-soc/docs/TECHNICAL_DOCUMENTATION.md` (project overview, architecture
 diagrams, folder structure, installation guide, how-to-run, API documentation for the
 identity/EDR/Triage APIs, database schema for SQLite + PostgreSQL `eval`, configuration
@@ -731,6 +754,22 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-11-10 (portfolio)** — Added `docs/ai-agentic-soc-case-study.md` and seven dashboard
+  screenshots under `docs/assets/images/ai-agentic-soc/` (overview, case summary, timeline,
+  evidence/flags, MITRE ATT&CK, approved decision, evaluation results). The sample case is
+  `SOC-20261105-013` (High/High, 250 correlated events, 1m44s trigger burst, Responder/LLMNR/NBT-NS/ARP
+  chain; MTTD 34.6s, triage 1m04s, report 1m38s, illustrative 45m manual baseline -> 43m21s saved).
+  Recorded the analyst approval through StreamSOC; containment remains advisory. Fixed the StreamSOC
+  parser to read bold `Attack duration (trigger burst)` labels. Added the project card + case-study link
+  to `docs/_config.yml`, `docs/projects.md`, and `docs/index.md`. **99 engine tests passing.** Docs and
+  site changes not committed.
+- **2026-11-10 (docs)** — Added `ai-agentic-soc/docs/DEMO_SCRIPT.md` for a 5–10 minute demo
+  (target 9:00). Covers the seven-stage flow, a word-for-word voiceover script, stage-by-stage
+  AI-vs-deterministic explanation, pre-demo checklist, Mode A (live daemon) vs Mode B
+  (controlled API queue) paths, video shot list/export spec, fallback table, Q&A cheat sheet,
+  exact commands/endpoints, and cleanup. States the current scope boundary: approval is stored
+  in `data/triage_decisions.json`, but the build does not auto-close Wazuh/TheHive or execute
+  containment. Added a pointer from `ai-agentic-soc/README.md`. Not committed.
 - **2026-11-09 (docs)** — Added `ai-agentic-soc/docs/TECHNICAL_DOCUMENTATION.md` covering
   project overview, architecture diagrams, folder structure, installation, how-to-run, API
   reference (identity/EDR/Triage), SQLite + PostgreSQL `eval` schemas, configuration,
