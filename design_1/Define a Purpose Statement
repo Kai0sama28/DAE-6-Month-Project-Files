@@ -1,0 +1,31 @@
+Building an AI-Agentic Triage and Investigation Engine is a high-impact project that aligns perfectly with the "Agentic SOC" trend, where autonomous AI agents transition from simple automation (fixed decision trees) to active decision partners.
+Given your emergency response background, you are uniquely positioned to build a tool that codifies "judgment under pressure" into autonomous investigative playbooks.
+1. Core Concept: The "Agentic SOC" Analyst
+Traditional SOC automation (SOAR) follows rigid "if-this-then-that" rules. Your engine will instead use Large Language Models (LLMs) to independently determine which investigative steps are necessary based on the specific alert received.
+Autonomous Querying: The system should pull identity context (e.g., from Okta or Azure AD), query SIEM history (e.g., Splunk), and check EDR telemetry (e.g., CrowdStrike) before a human ever opens the ticket.
+Dynamic Assessment: The AI must correlate these disjointed logs across multiple platforms to construct a unified incident timeline.
+Natural Language Synthesis: It generates a summary explaining the "why" behind the risk, translating technical telemetry into business impact.
+2. Technical Implementation Roadmap
+To build this, you will need to bridge Backend Engineering with AI Security.
+Language & Logic: Python is the standard for these automation and machine learning workflows. You will likely use frameworks like LangChain or RAG (Retrieval-Augmented Generation) to give the LLM access to your specific security logs.
+API Integration: Your engine must interface with security tool APIs:
+Identity: Pull user roles and login locations.
+SIEM: Query historical event logs for patterns of lateral movement or credential stuffing.
+EDR: Fetch process dumps or network connection data from the affected endpoint.
+Prompt Engineering: You must design effective prompts that instruct the LLM on how to act as a Tier 1 Triage Analyst, separating "noise" from genuine attacks.
+3. Strategic Project Workflow
+Your engine should follow a structured incident handling flow similar to NIST 800-61r2:
+Alert Reception: Ingest a JSON payload from a simulated SIEM alert.
+Context Gathering: The Agent "decides" to query the identity provider to see if the user’s login was from an unusual location (e.g., New York vs. Moscow).
+Threat Correlation: The Agent checks EDR logs to see if that user recently downloaded an unusual file (e.g., an infostealer).
+Timeline Construction: It maps these events to the MITRE ATT&CK framework, identifying tactics like Initial Access or Persistence.
+Human Handoff: The Agent compiles its reasoning chain into a summary, highlighting any "toxic combinations" of risk (e.g., public resource + overprivileged identity + sensitive data).
+4. Advanced Features for "Big Tech" Appeal
+To stand out, your project must address the systemic challenges of AI in security:
+Model Explainability: Provide a "reasoning chain" so human analysts can audit why the AI arrived at its conclusions.
+Human-in-the-Loop Guardrails: Implement "Active Mitigation" where the AI proposes a containment action (like isolating a host), but requires manual authorization for high-risk assets.
+Cost Optimization: Use techniques to optimize token costs when querying LLMs for large volumes of logs.
+5. Portfolio Presentation (The XYZ Impact)
+When presenting this, use the XYZ format to quantify the value of your emergency-response-turned-AI-engine:
+"Accomplished automated triage of 90% of routine alerts through an LLM-based investigative engine, resulting in shrinking investigation timelines from hours to minutes and reducing analyst burnout."
+Next Steps: Start by building a simple Python script that takes a single "Suspicious Login" alert and uses the OpenAI or Anthropic API to query a mock CSV database of "User Identities." This proves the basic logic before you scale to full SIEM/EDR integrations
