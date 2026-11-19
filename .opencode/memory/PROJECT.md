@@ -8,7 +8,23 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Latest (2026-11-10, portfolio): Wrote the AI-Agentic SOC portfolio case study + captured dashboard screenshots.**
+**Newest (2026-11-19, docs): Added `python_1/Conduct_a_Vulnerability_Assessment.md`.**
+A rubric-scoped write-up using ONLY existing evidence: the Nmap 7.94/NSE assessment of the Wazuh/OpenSearch
+host `10.11.3.185` recorded in `Vulnerability_Assessment_Report.md` and its raw scan PDF. It lists two
+web-service findings (9200 OpenSearch exposure, 443 `osd-name` fingerprint disclosure), both honestly
+mapped to a single OWASP category (A05:2021 Security Misconfiguration), with reproduction commands,
+remediation and evidence paths. Explicitly states the gaps: no other OWASP category evidenced, XSS/CSRF
+checks were negative, and no DVWA/ZAP/Burp/Nikto test exists. Uncommitted.
+
+**Previous (2026-11-19, docs): Added a security-evidence citation note under `python_1/`.**
+Created `python_1/Security_Evidence_gitignore_and_FastAPI.md` citing existing repository evidence for
+the development-environment security rubric: root/nested `.gitignore` rules, secret-handling docs,
+the GH013 Push Protection write-up, and FastAPI/Pydantic input validation, ID allow-listing, HTML
+escaping, loopback binding and the 422 enforcement test. The note explicitly records the missing
+areas (VS Code/SonarLint/GitGuardian, commit signing/GPG/hooks, CORS/CSRF/headers/auth, and
+screenshots). No code changed; file is uncommitted.
+
+**Previous (2026-11-10, portfolio): Wrote the AI-Agentic SOC portfolio case study + captured dashboard screenshots.**
 Created `docs/ai-agentic-soc-case-study.md` (Jekyll permalink `/projects/ai-agentic-soc/`) covering the
 problem, motivation, architecture, technologies, challenges, lessons learned, measured results, and
 honest scope limits. Captured seven StreamSOC screenshots into `docs/assets/images/ai-agentic-soc/`:
@@ -754,6 +770,18 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-11-19 (docs, 2nd)** — Added `python_1/Conduct_a_Vulnerability_Assessment.md`
+  using only existing evidence: the Nmap/NSE scan of Wazuh/OpenSearch host `10.11.3.185` from
+  `Vulnerability_Assessment_Report.md` and its raw PDF. Two web-service findings (9200 exposure, 443
+  `osd-name` disclosure), both mapped to A05:2021 Security Misconfiguration, with reproduction
+  commands, remediation and evidence paths. States the gaps honestly: no second OWASP category,
+  XSS/CSRF negative, no DVWA/ZAP/Burp/Nikto testing. Uncommitted.
+- **2026-11-19 (docs)** — Added `python_1/Security_Evidence_gitignore_and_FastAPI.md`, a citation
+  note mapping existing repo evidence to the security-tooling rubric: `.gitignore`/secrets handling,
+  the GitHub GH013 remediation write-up, FastAPI/Pydantic validation and allow-listing, HTML escaping
+  in report/dashboard renderers, loopback binding, and the 422 enforcement test. Also lists the gaps
+  (VS Code/SonarLint/GitGuardian, GPG/commit signing/hooks, CORS/CSRF/headers/auth, screenshots).
+  No code changes; uncommitted.
 - **2026-11-10 (portfolio)** — Added `docs/ai-agentic-soc-case-study.md` and seven dashboard
   screenshots under `docs/assets/images/ai-agentic-soc/` (overview, case summary, timeline,
   evidence/flags, MITRE ATT&CK, approved decision, evaluation results). The sample case is
