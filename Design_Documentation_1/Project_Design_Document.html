@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Design Document — AI-Agentic SOC Triage &amp; Investigation Engine</title>
+  <style>
+    :root {
+      --navy: #0b1f33;
+      --navy-2: #12304f;
+      --accent: #1f6feb;
+      --accent-soft: #e8f0fe;
+      --ink: #1b2733;
+      --muted: #5b6b7b;
+      --line: #d8e0e8;
+      --bg: #f4f6f9;
+      --paper: #ffffff;
+      --good: #1a7f37;
+      --warn: #9a6700;
+      --code-bg: #0d1117;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    /* ---------- Cover ---------- */
+    .cover {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 60%, #1b4a7a 100%);
+      color: #fff;
+      padding: 70px 24px 60px;
+      text-align: center;
+      border-bottom: 6px solid var(--accent);
+    }
+    .cover .brand {
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      font-size: 13px;
+      color: #9fc4ff;
+      margin-bottom: 18px;
+    }
+    .cover h1 {
+      margin: 0 auto 14px;
+      max-width: 900px;
+      font-size: clamp(28px, 4.5vw, 46px);
+      line-height: 1.15;
+      font-weight: 750;
+    }
+    .cover .subtitle {
+      margin: 0 auto 28px;
+      max-width: 760px;
+      font-size: 18px;
+      color: #cfe0f5;
+    }
+    .cover .meta {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 10px 26px;
+      justify-content: center;
+      border-top: 1px solid rgba(255,255,255,.2);
+      padding-top: 22px;
+      font-size: 14px;
+      color: #dbe8f7;
+    }
+    .cover .meta b { color: #fff; }
+
+    /* ---------- Layout ---------- */
+    .wrap {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 32px;
+      max-width: 1200px;
+      margin: 36px auto;
+      padding: 0 24px;
+      align-items: start;
+    }
+
+    /* ---------- Sidebar TOC ---------- */
+    nav.toc {
+      position: sticky;
+      top: 20px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px 14px;
+      box-shadow: 0 4px 16px rgba(11,31,51,.05);
+    }
+    nav.toc h2 {
+      margin: 0 0 12px;
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    nav.toc ol {
+      list-style: none;
+      counter-reset: toc;
+      margin: 0;
+      padding: 0;
+    }
+    nav.toc li { counter-increment: toc; }
+    nav.toc a {
+      display: block;
+      padding: 6px 8px;
+      border-radius: 6px;
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    nav.toc a::before {
+      content: counter(toc) ". ";
+      color: var(--muted);
+    }
+    nav.toc a:hover, nav.toc a.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    /* ---------- Document ---------- */
+    main {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 44px 52px 56px;
+      box-shadow: 0 6px 24px rgba(11,31,51,.06);
+    }
+
+    .doc-header-note {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #244b7a;
+      margin-bottom: 38px;
+    }
+
+    section { margin-bottom: 44px; scroll-margin-top: 20px; }
+
+    section > h2 {
+      font-size: 23px;
+      color: var(--navy);
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 10px;
+      margin: 0 0 18px;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    section > h2 .num {
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      flex: 0 0 auto;
+    }
+
+    h3 {
+      font-size: 16px;
+      color: var(--navy-2);
+      margin: 24px 0 8px;
+    }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 0 0 14px; padding-left: 24px; }
+    li { margin-bottom: 6px; }
+
+    .muted { color: var(--muted); font-size: 14px; }
+    .hint {
+      color: var(--muted);
+      font-style: italic;
+      font-size: 14px;
+    }
+
+    /* ---------- Tables ---------- */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px;
+      font-size: 15px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: var(--navy);
+      color: #fff;
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: .3px;
+    }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    td code, p code, li code {
+      background: #eef2f7;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #0b3d6e;
+    }
+    .vc-table th { background: var(--navy-2); }
+
+    /* ---------- Badges / callouts ---------- */
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+    .badge.draft { background: #fff3cd; color: #7a5600; border: 1px solid #f0d68a; }
+
+    .callout {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--good);
+      background: #f2fbf4;
+      padding: 14px 18px;
+      border-radius: 6px;
+      margin: 16px 0;
+    }
+    .callout.warn { border-left-color: var(--warn); background: #fff9ec; }
+    .callout.info { border-left-color: var(--accent); background: var(--accent-soft); }
+    .callout strong { color: var(--navy); }
+
+    /* ---------- Diagram ---------- */
+    .diagram {
+      background: var(--code-bg);
+      color: #c9d7e6;
+      padding: 22px 24px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre;
+    }
+    .diagram .hl { color: #79c0ff; }
+    .diagram .gr { color: #7ee787; }
+    .diagram .ye { color: #e3b341; }
+
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      margin: 18px 0;
+    }
+    .flow .node {
+      background: var(--accent-soft);
+      border: 1px solid #bcd4f5;
+      color: #14457f;
+      border-radius: 8px;
+      padding: 9px 13px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .flow .node.gate {
+      background: #fff3cd;
+      border-color: #f0d68a;
+      color: #7a5600;
+    }
+    .flow .arrow { color: var(--muted); font-weight: 700; }
+
+    /* ---------- Print ---------- */
+    @media print {
+      body { background: #fff; font-size: 11pt; }
+      nav.toc { display: none; }
+      .wrap { display: block; margin: 0; padding: 0; max-width: none; }
+      main { border: none; box-shadow: none; padding: 0; }
+      .cover { padding: 40px 10px; }
+      section { page-break-inside: avoid; }
+      section > h2 { color: #000; }
+      .diagram { background: #fff; color: #000; border: 1px solid #999; white-space: pre-wrap; }
+      .diagram .hl, .diagram .gr, .diagram .ye { color: #000; }
+    }
+
+    @media (max-width: 900px) {
+      .wrap { grid-template-columns: 1fr; }
+      nav.toc { position: static; }
+      main { padding: 28px 22px 40px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============ COVER ============ -->
+  <header class="cover">
+    <div class="brand">DAE 6-Month Project &middot; Design Documentation</div>
+    <h1>AI-Agentic SOC Triage &amp;<br />Investigation Engine</h1>
+    <p class="subtitle">
+      An LLM-orchestrated investigation agent that autonomously triages security alerts
+      before a human analyst opens them &mdash; correlating identity, SIEM and endpoint
+      evidence into a MITRE ATT&amp;CK&ndash;mapped timeline and an auditable risk report,
+      with a hard human-in-the-loop approval gate.
+    </p>
+    <div class="meta">
+      <span><b>Author:</b> Kyrell Green</span>
+      <span><b>Version:</b> DRAFT</span>
+      <span><b>Date:</b> 11/20/2026</span>
+      <span><b>Based on:</b> EDU_DOC Project Design Document Template v2</span>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <!-- ============ TOC ============ -->
+    <nav class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="#sec1">Project Title &amp; Version Control</a></li>
+        <li><a href="#sec2">Project Summary</a></li>
+        <li><a href="#sec3">Problem Statement / Use Case</a></li>
+        <li><a href="#sec4">Goals and Objectives</a></li>
+        <li><a href="#sec5">Roles and Responsibilities</a></li>
+        <li><a href="#sec6">Key Features / Functions</a></li>
+        <li><a href="#sec7">Tech Stack and Tools</a></li>
+        <li><a href="#sec8">Architecture / Workflow Diagram</a></li>
+        <li><a href="#sec9">Timeline / Weekly Milestones</a></li>
+        <li><a href="#sec10">Risks and Risk Mitigation</a></li>
+        <li><a href="#sec11">Evaluation Criteria</a></li>
+        <li><a href="#sec12">Future Considerations</a></li>
+      </ol>
+    </nav>
+
+    <!-- ============ DOCUMENT ============ -->
+    <main>
+      <div class="doc-header-note">
+        This document follows the <strong>EDU_DOC Resource &mdash; Project Design Document Template v2</strong>
+        (last updated November 3rd, 2025). Prompts from the template have been replaced with the
+        actual design of the <strong>AI-Agentic SOC Triage &amp; Investigation Engine</strong>, the active
+        capstone in the DAE 6-Month Project Files workspace.
+      </div>
+
+      <!-- 1 -->
+      <section id="sec1">
+        <h2><span class="num">1.</span> Project Title &amp; Version Control</h2>
+        <p><strong>Project Title:</strong> AI-Agentic SOC Triage &amp; Investigation Engine</p>
+        <p class="muted">
+          A clear, relevant name describing an LLM-orchestrated agent that triages security
+          alerts from a real Wazuh SIEM, correlates supporting evidence, and produces a
+          MITRE-mapped analyst report.
+        </p>
+
+        <h3>Version Control</h3>
+        <table class="vc-table">
+          <thead>
+            <tr><th style="width:22%">Field</th><th>Value</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Version</td><td><span class="badge draft">DRAFT</span> &nbsp;v0.3 (adopted architecture updates)</td></tr>
+            <tr><td>Date</td><td>11/20/2026</td></tr>
+            <tr><td>Change Log</td>
+              <td>
+                <ul>
+                  <li><b>v0.1</b> &mdash; Initial design: mock SIEM/identity/EDR pillars, LangGraph pull model.</li>
+                  <li><b>v0.2</b> &mdash; Added LLM tool-calling agent and evidence-correlation design.</li>
+                  <li><b>v0.3</b> &mdash; Real Wazuh 4.14.7 replaces mock SIEM (see <code>ARCHITECTURE.md</code>);
+                      continuous background triage agent, deterministic correlation with burst delineation,
+                      HTML reports, evaluation dataset, and FastAPI/Streamlit control plane documented.</li>
+                </ul>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- 2 -->
+      <section id="sec2">
+        <h2><span class="num">2.</span> Project Summary (2&ndash;3 sentences)</h2>
+        <p>
+          This project builds an autonomous triage agent that watches a live Wazuh SIEM, gathers
+          identity and endpoint evidence, correlates it into a reproducible timeline, and writes a
+          natural-language incident report mapped to MITRE ATT&amp;CK. It matters because SOC teams
+          are flooded with alerts that arrive at all hours, and an agent that performs the first-pass
+          investigation before a human opens the queue can cut triage time while keeping containment
+          authority with a person. The system is deliberately built so code owns the facts (counts,
+          timestamps, techniques) and the LLM only writes the prose, with a hard approval gate that
+          makes automated containment impossible by design.
+        </p>
+      </section>
+
+      <!-- 3 -->
+      <section id="sec3">
+        <h2><span class="num">3.</span> Problem Statement / Use Case</h2>
+        <h3>Real-world problem</h3>
+        <p>
+          Security operations centers face high alert volume and constant context-switching. Each
+          detection requires an analyst to manually pivot across the SIEM, identity provider and EDR,
+          correlate events by user/host/source IP, decide whether activity is benign, and write a
+          report &mdash; work that is slow, repetitive, and difficult to perform consistently at 03:00
+          when attacks actually happen. A second problem is trust: handing an LLM raw alerts and asking
+          it to "investigate" invites hallucinated numbers and unsafe automated actions.
+        </p>
+        <h3>Who would use this</h3>
+        <ul>
+          <li><b>SOC analysts / tier-1 triage</b> &mdash; open a pre-investigated case instead of raw alerts, with a timeline and draft report.</li>
+          <li><b>SOC leads / incident responders</b> &mdash; review MITRE-mapped evidence, approve or reject recommendations, and audit how a conclusion was reached.</li>
+          <li><b>Security engineering / portfolio reviewers</b> &mdash; evaluate API integration, deterministic correlation and evaluation methodology against a real lab SIEM.</li>
+        </ul>
+        <div class="callout info">
+          <strong>Use case in one line:</strong> "Alert arrives from Wazuh &rarr; the agent triages it
+          with three evidence pillars &rarr; an analyst reviews a DRAFT report and decides what, if
+          anything, to contain."
+        </div>
+      </section>
+
+      <!-- 4 -->
+      <section id="sec4">
+        <h2><span class="num">4.</span> Goals and Objectives</h2>
+        <ol>
+          <li>
+            <b>Autonomous first-pass triage against a real SIEM.</b>
+            Build a continuously running LangGraph agent that polls the Wazuh indexer, waits for
+            Wazuh correlation rules to settle, and investigates qualifying alerts (level &ge; 10)
+            without analyst prompting.
+          </li>
+          <li>
+            <b>Reproducible, auditable evidence correlation.</b>
+            Implement deterministic Python correlation (relations, attack phases, bursts, timeline,
+            MITRE mapping) so every number in a report can be re-derived from the indexer, and the
+            LLM is restricted to narrative sections.
+          </li>
+          <li>
+            <b>Safe human-in-the-loop output.</b>
+            Produce stamped DRAFT Markdown + HTML reports with full provenance and an approval gate
+            that records analyst decisions but never executes containment.
+          </li>
+        </ol>
+        <p class="muted">
+          Supporting objective: demonstrate measurable results with a deterministic 50-case labeled
+          evaluation dataset (ground truth assigned by code, never the LLM) replayed through the real
+          agent graph.
+        </p>
+      </section>
+
+      <!-- 5 -->
+      <section id="sec5">
+        <h2><span class="num">5.</span> Roles and Responsibilities (If team based project)</h2>
+        <p>
+          This is an individual capstone. All roles below are held by <b>Kyrell Green</b>, who
+          designed, implemented, tested and documented the system end to end. The roles are listed
+          explicitly to show the functional areas covered and where mock external services stand in
+          for real vendors.
+        </p>
+        <table>
+          <thead><tr><th style="width:30%">Role</th><th>Responsibilities in this project</th></tr></thead>
+          <tbody>
+            <tr><td>Project owner / lead developer</td><td>Scope, architecture decisions, change log, and final submission.</td></tr>
+            <tr><td>SOC engineer / SIEM integrator</td><td>Wazuh 4.14.7 lab, REST API + indexer clients, JWT auth, alert normalizer, live agent inventory.</td></tr>
+            <tr><td>AI / agent engineer</td><td>LangGraph supervisor pipeline, deterministic correlation, LLM narrative step, model fallback chain.</td></tr>
+            <tr><td>Backend / API engineer</td><td>FastAPI triage control plane, job queue, case and decision endpoints; SQLite operational state.</td></tr>
+            <tr><td>Frontend engineer</td><td>Streamlit dashboard for alert queue, case review, reports and the approval gate.</td></tr>
+            <tr><td>QA / evaluation engineer</td><td>99 passing unit + integration tests, 50-case labeled dataset, PostgreSQL <code>eval</code> schema, evaluation harness.</td></tr>
+            <tr><td>Technical writer</td><td>Architecture, technical documentation, demo script, portfolio case study, and this design document.</td></tr>
+            <tr><td>External services (mocks)</td><td>Identity service is Okta/Azure AD&ndash;shaped; EDR service is CrowdStrike Falcon&ndash;shaped; both are schema-matched mocks swappable for real vendors later.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- 6 -->
+      <section id="sec6">
+        <h2><span class="num">6.</span> Key Features / Functions</h2>
+        <ul>
+          <li><b>Continuous background watcher</b> &mdash; polls the Wazuh indexer (<code>wazuh-alerts-*</code>) with a cursor and seen-ID set; read-only.</li>
+          <li><b>Settle window</b> &mdash; waits <code>AGENT_SETTLE_SECONDS</code> (25 s) so Wazuh's own correlation rules fire before a trigger is chosen.</li>
+          <li><b>Three evidence pillars</b> &mdash; real Wazuh SIEM alerts + agent inventory; mock Okta-shaped identity; mock Falcon-shaped EDR telemetry.</li>
+          <li><b>Deterministic correlation</b> &mdash; groups events by endpoint, source IP, account and rule family; splits separate attacks into bursts so "attack duration" is not inflated.</li>
+          <li><b>MITRE ATT&amp;CK mapping &amp; timeline</b> &mdash; phases, techniques and chronological event list computed in Python.</li>
+          <li><b>LLM narrative with hard guardrails</b> &mdash; model receives a deterministic evidence pack and returns JSON prose; a model chain and wall-clock budget bound failures; reports ship deterministic-only if needed.</li>
+          <li><b>Auditable reports</b> &mdash; Markdown + self-contained HTML reports with provenance (run ID, evidence/prompt hashes, token use, query count, exact window).</li>
+          <li><b>Desktop notification</b> &mdash; banner, sound, and clickable dialog that opens the HTML report.</li>
+          <li><b>Control plane &amp; dashboard</b> &mdash; FastAPI endpoints to queue investigations, poll jobs, list cases, serve reports and record analyst decisions; Streamlit UI for review.</li>
+          <li><b>Evaluation harness</b> &mdash; 50 labeled cases across five categories, replayed through the real agent graph with accuracy and timing reports.</li>
+          <li><b>Human-in-the-loop safety</b> &mdash; reports are stamped <code>DRAFT &mdash; requires analyst review</code>; no containment node exists in the graph.</li>
+        </ul>
+      </section>
+
+      <!-- 7 -->
+      <section id="sec7">
+        <h2><span class="num">7.</span> Tech Stack and Tools</h2>
+        <table>
+          <thead><tr><th style="width:26%">Category</th><th style="width:34%">Tool / Technology</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>SIEM + alert source</td><td>Wazuh 4.14.7 (real, Docker)</td><td>Live detections, correlated alerts and historical security-event queries.</td></tr>
+            <tr><td>SIEM connectivity</td><td><code>httpx</code> with JWT auth + HTTP Basic (indexer)</td><td>Wazuh API for agents/syscheck; OpenSearch indexer for <code>wazuh-alerts-*</code> reads.</td></tr>
+            <tr><td>Identity evidence</td><td>FastAPI mock (Okta / Azure AD&ndash;shaped)</td><td>Synthetic user identity and login history.</td></tr>
+            <tr><td>EDR evidence</td><td>FastAPI mock (CrowdStrike Falcon&ndash;shaped)</td><td>Synthetic endpoint process / network / file telemetry.</td></tr>
+            <tr><td>Agent orchestration</td><td>LangGraph (LangChain)</td><td>Supervisor, evidence tools, correlation, synthesis, native HITL pause/resume.</td></tr>
+            <tr><td>LLM</td><td>NVIDIA Nemotron 3 Ultra 550B <code>nvidia/nemotron-3-ultra-550b-a55b:free</code> via OpenRouter, with Lightning fallback</td><td>Analyst narrative JSON; free-tier model chain bounds cost and failure.</td></tr>
+            <tr><td>Data models</td><td>Pydantic schemas</td><td>Tool-agnostic internal alert/identity/EDR/SIEM models; vendor-shape isolation.</td></tr>
+            <tr><td>Database</td><td>SQLite (MVP, <code>DATABASE_URL</code> swappable) + PostgreSQL <code>eval</code> schema</td><td>Investigation state and labeled ground truth, kept separate.</td></tr>
+            <tr><td>Control plane</td><td>FastAPI</td><td>Queue investigations, serve jobs/cases/reports, record analyst decisions (loopback only).</td></tr>
+            <tr><td>Dashboard</td><td>Streamlit</td><td>Alert queue, case review, report viewer, approval gate.</td></tr>
+            <tr><td>Evaluation</td><td>Deterministic generator + JSONL + PostgreSQL</td><td>50-case held-out dataset, scoring, accuracy and timing reports.</td></tr>
+            <tr><td>Lab environment</td><td>UTM VMs (Kali / Ubuntu / Windows agents), Suricata + EveBox, TheHive 5.2.16, Wireshark</td><td>Real endpoints, network detections, case management and packet evidence feeding Wazuh.</td></tr>
+            <tr><td>Language / tests</td><td>Python 3.9, pytest, <code>venv</code></td><td>99 passing unit + end-to-end integration tests.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- 8 -->
+      <section id="sec8">
+        <h2><span class="num">8.</span> Architecture / Workflow Diagram</h2>
+        <h3>Algorithm / flow of the investigation pipeline</h3>
+        <div class="flow" aria-label="Investigation workflow">
+          <span class="node">Wazuh alert<br />(indexer)</span><span class="arrow">&rarr;</span>
+          <span class="node">watch +<br />settle</span><span class="arrow">&rarr;</span>
+          <span class="node">supervisor<br />(plan pillars)</span><span class="arrow">&rarr;</span>
+          <span class="node">identity /<br />EDR / SIEM</span><span class="arrow">&rarr;</span>
+          <span class="node">deterministic<br />timeline</span><span class="arrow">&rarr;</span>
+          <span class="node">LLM<br />narrative</span><span class="arrow">&rarr;</span>
+          <span class="node">DRAFT report<br />+ notify</span><span class="arrow">&rarr;</span>
+          <span class="node gate">human approval<br />gate</span>
+        </div>
+        <p class="muted">
+          Containment is recommended as advisory text only &mdash; the graph has no containment node.
+        </p>
+
+        <h3>Runtime architecture (as built)</h3>
+        <div class="diagram"><span class="hl">Wazuh 4.14.7 (real, Docker)</span>
+  indexer :9200 ── wazuh-alerts-* ──► watch (cursor + seen IDs)
+  API     :55000 ── /agents ─────────► siem enrichment
+         │
+         ▼
+<span class="hl">agent/ — LangGraph supervisor</span>
+  watch → settle(25s) → supervisor → identity (mock Okta-shaped)
+                                    → edr (mock Falcon-shaped)
+                                    → siem (REAL indexer correlation)
+         → <span class="gr">timeline (relations, phases, bursts)</span>
+         → <span class="ye">reason (Nemotron via OpenRouter, JSON prose)</span>
+         → report (Markdown + HTML, provenance)
+         → notify (banner + sound + clickable dialog)
+         │
+         ▼
+<span class="hl">Outputs</span>
+  reports/SOC-YYYYMMDD-NNN.{md,html} + LATEST.{md,html}
+  FastAPI :8080 (queue / jobs / cases / decisions) → Streamlit :8501
+  SQLite operational state  |  PostgreSQL eval schema (ground truth)</div>
+
+        <h3>Key design rules</h3>
+        <ul>
+          <li><b>Code owns the facts, LLM owns the prose.</b> Counts, timestamps, relations, phases, bursts and timeline order are computed in Python from indexed alerts; the model may only narrate them.</li>
+          <li><b>Attempt volume is the maximum <code>rule.firedtimes</code></b> counter, never the sum across rules &mdash; a cumulative-counter trap documented in the architecture.</li>
+          <li><b>Settle window</b> prevents triggering on a level-5 PAM failure before the level-12 brute-force verdict arrives.</li>
+          <li><b>Burst delineation</b> uses a 120 s silence gap so unrelated history does not inflate attack duration.</li>
+          <li><b>Read-only evidence access</b> to the indexer; no Wazuh write endpoints are ever called.</li>
+        </ul>
+      </section>
+
+      <!-- 9 -->
+      <section id="sec9">
+        <h2><span class="num">9.</span> Timeline / Weekly Milestones</h2>
+        <p class="muted">
+          The template's four-week table is expanded to the 12-week capstone build recorded in the
+          project README, followed by the remaining consolidation work.
+        </p>
+        <table>
+          <thead><tr><th style="width:18%">Week</th><th>Outcome</th></tr></thead>
+          <tbody>
+            <tr><td>Week 1</td><td>Project scoping, lab setup; Wazuh 4.14.7 single-node Docker stack live with agent enrollments.</td></tr>
+            <tr><td>Week 2</td><td>Internal alert schema + Wazuh alert normalizer; indexer query client and JWT API client.</td></tr>
+            <tr><td>Week 3</td><td>Identity mock API (Okta-shaped) and EDR mock API (Falcon-shaped) implemented and seeded.</td></tr>
+            <tr><td>Week 4</td><td>End-to-end evidence gathering across all three pillars; stack integrated and tested.</td></tr>
+            <tr><td>Week 5</td><td>LangGraph supervisor and tool-calling node design; evidence pack schema defined.</td></tr>
+            <tr><td>Week 6</td><td>Alert-to-evidence pipeline wired; agent tools call identity / EDR / Wazuh SIEM.</td></tr>
+            <tr><td>Week 7</td><td>Deterministic correlation, attack phases and MITRE ATT&amp;CK mapping implemented.</td></tr>
+            <tr><td>Week 8</td><td>Continuous background triage agent (watch &rarr; settle &rarr; supervisor &rarr; &hellip; &rarr; report); first live reports.</td></tr>
+            <tr><td>Week 9</td><td>Report synthesis: Markdown + self-contained HTML with provenance; desktop notification.</td></tr>
+            <tr><td>Week 10</td><td>Hardening: burst delineation, trigger floor, model chain, timeouts/budget; 80+ tests passing.</td></tr>
+            <tr><td>Week 11</td><td>FastAPI triage control plane + Streamlit dashboard; analyst decision recording; 85 tests.</td></tr>
+            <tr><td>Week 12</td><td>50-case labeled evaluation dataset, PostgreSQL <code>eval</code> schema, evaluation harness (45/50 completed), full technical documentation, 99 tests passing.</td></tr>
+            <tr><td>Post-build</td><td>Dedicated timeline/MITRE dashboard views, wiring decisions to an action layer (TheHive / approved executor), portfolio case study and demo video.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- 10 -->
+      <section id="sec10">
+        <h2><span class="num">10.</span> Risks and Risk Mitigation</h2>
+        <table>
+          <thead><tr><th style="width:26%">Risk</th><th style="width:14%">Category</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr><td>LLM hallucinates counts, timestamps or MITRE techniques</td><td>Integrity</td><td>Code owns all facts; model returns structured JSON prose only; reports carry evidence hashes so numbers are re-derivable; deterministic-only fallback when unavailable.</td></tr>
+            <tr><td>LLM made unavailable or unparsable</td><td>Technical</td><td>JSON repair re-ask, ordered model chain (Nemotron Ultra primary / Lightning fallback), wall-clock budget; report still ships with deterministic half and explicit "narrative engine unavailable" note.</td></tr>
+            <tr><td>Free-tier rate limits / model retirement</td><td>Operational / cost</td><td>Fallback models, token/time budgets, pre-filtering in Python before any LLM call; retired routes swapped by config, not code rewrites.</td></tr>
+            <tr><td>Wazuh API credentials exposed</td><td>Security</td><td>Credentials from environment variables only; <code>.env</code> gitignored; JWT tokens cached in memory with expiry; never committed.</td></tr>
+            <tr><td>Wazuh version API drift</td><td>Technical</td><td>All Wazuh calls isolated in the <code>siem/</code> client + normalizer; internal schema stays stable; alerts from indexer are a documented 4.x constraint.</td></tr>
+            <tr><td>Triggering on individual events before correlation</td><td>Accuracy</td><td>Settle window (25 s) waits for Wazuh level-12 verdict; trigger floor level 10 keeps benign level-5 noise out of the queue.</td></tr>
+            <tr><td>Attack duration inflated by unrelated history</td><td>Accuracy</td><td>Burst delineation on a 120 s silence gap; out-of-burst events marked <code>context</code>.</td></tr>
+            <tr><td>Over-querying live SIEM / high query cost</td><td>Operational / cost</td><td><code>limit</code>/<code>offset</code> caps, time-window filters, cached lookups; read-only calls to the indexer.</td></tr>
+            <tr><td>Daemon stalls on a slow model stream</td><td>Operational</td><td>Hard <code>AGENT_LLM_BUDGET</code> deadline plus per-attempt WARNING logs (HTTP timeouts are per-read, not total).</td></tr>
+            <tr><td>Unsafe containment</td><td>Safety</td><td>No containment node exists; recommendations are advisory; reports stamped DRAFT; analyst decisions recorded separately; no credential path to response systems.</td></tr>
+            <tr><td>Dashboard / API exposed on network</td><td>Security</td><td>Bound to loopback only (<code>127.0.0.1</code>); documented requirement for an authenticated proxy before any broader exposure (no built-in auth).</td></tr>
+            <tr><td>Python 3.9 incompatibilities</td><td>Technical</td><td>Use <code>Optional[...]</code>, no <code>X | None</code>; hand-written <code>httpx</code> REST client for OpenRouter (official SDK needs &ge;3.10).</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- 11 -->
+      <section id="sec11">
+        <h2><span class="num">11.</span> Evaluation Criteria</h2>
+        <p>Measures of success for the delivered system:</p>
+        <ol>
+          <li>
+            <b>Functional completeness.</b>
+            All pipeline stages run end to end against the real Wazuh lab: alert arrival &rarr;
+            investigation &rarr; timeline &rarr; ATT&amp;CK mapping &rarr; AI report &rarr; analyst approval.
+            Live SSH brute-force detections (e.g. rule <code>100002</code>, level 12, MITRE <code>T1110</code>)
+            produce a correct, correlated report; 99 tests pass.
+          </li>
+          <li>
+            <b>Measured accuracy on held-out ground truth.</b>
+            The 50-case labeled dataset (10 each: credential stuffing, brute force, phishing,
+            ransomware precursor, benign) is replayed through the real agent graph. Latest run:
+            <b>45/50 completed</b>, ATT&amp;CK correct <b>43/50 (86.0%)</b>, recommendation lenient
+            <b>40/50 (80.0%)</b>; 5 cases blocked by free-tier limits were scored incorrect, not
+            silently passed.
+          </li>
+          <li>
+            <b>Guardrail integrity.</b>
+            100% of reports remain DRAFT with provenance; zero auto-executed containment actions;
+            deterministic numbers match the indexer on re-derivation.
+          </li>
+          <li>
+            <b>Measured time savings.</b>
+            MTTD and triage latency captured per run (e.g. MTTD ~15 s, triage ~80 s versus manual
+            multi-tool investigation), with processing-time reports by label.
+          </li>
+          <li>
+            <b>Auditability and documentation quality.</b>
+            Architecture change log, technical documentation, demo script and this design document
+            allow an independent reviewer to reproduce the build and every reported number.
+          </li>
+        </ol>
+      </section>
+
+      <!-- 12 -->
+      <section id="sec12">
+        <h2><span class="num">12.</span> Future Considerations</h2>
+        <ul>
+          <li><b>Action layer integration</b> &mdash; wire recorded analyst approvals into TheHive or an approved executor so decisions close the case; containment remains human-authorized.</li>
+          <li><b>Dedicated timeline / MITRE dashboard views</b> &mdash; richer visual exploration of correlated events and technique coverage in Streamlit.</li>
+          <li><b>Real vendor connectors</b> &mdash; replace the identity and EDR mocks with real Okta / CrowdStrike APIs; schemas are already swappable, no agent rebuild needed.</li>
+          <li><b>Durable job queue &amp; authentication</b> &mdash; replace the single in-process worker with a persistent queue and add auth to the API/dashboard before any non-loopback deployment.</li>
+          <li><b>Evaluation expansion</b> &mdash; more cases per label, additional attack families, paid-tier or self-hosted LLM for full 50/50 completion, and tuning to improve exact ATT&amp;CK and recommendation accuracy.</li>
+          <li><b>Detection engineering feedback loop</b> &mdash; feed identified lab gaps (e.g. password spraying undetectable by same-source rules, unactioned flood warnings) back into Wazuh rule tuning.</li>
+          <li><b>Ongoing maintenance</b> &mdash; track Wazuh API drift, rotate lab credentials (including any exposed in earlier history), verify Suricata log rotation handling, and keep the portfolio case study and demo video current.</li>
+        </ul>
+        <div class="callout">
+          <strong>End of document.</strong> Prepared for the DAE 6-Month Project using the
+          EDU_DOC Project Design Document Template v2 (updated November 3rd, 2025).
+        </div>
+      </section>
+
+      <p class="muted" style="text-align:center; border-top:1px solid var(--line); padding-top:18px; margin-top:10px;">
+        Version DRAFT &nbsp;|&nbsp; Copyright &copy; 2026 DAE &nbsp;|&nbsp; Kyrell Green
+      </p>
+    </main>
+  </div>
+
+  <script>
+    // Highlight the current section in the table of contents on scroll.
+    const links = Array.from(document.querySelectorAll('nav.toc a'));
+    const sections = links.map(a => document.querySelector(a.getAttribute('href')));
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          links.forEach(a => a.classList.remove('active'));
+          const link = links.find(a => a.getAttribute('href') === '#' + entry.target.id);
+          if (link) link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-10% 0px -80% 0px' });
+    sections.forEach(s => s && observer.observe(s));
+  </script>
+</body>
+</html>
