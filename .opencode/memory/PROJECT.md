@@ -8,7 +8,18 @@ Update it per the rules in AGENTS.md. NEVER store secrets/passwords/API keys her
 
 ## Current status
 
-**Newest (2026-11-19, docs): Added `python_1/Conduct_a_Vulnerability_Assessment.md`.**
+**Newest (2026-11-22, docs): Created four API-integration rubric write-ups in `ai_api_integration_1/`.**
+Files: `restful_api_method_utilization.md`, `format_and_display_api_data.md`,
+`structuring_api_requests_and_responses.md`, `implement_open_or_secured_apis.md`. Each maps one
+rubric line to checked-in evidence with file:line citations: GET/POST/PATCH across the Triage API,
+identity/EDR mocks, indexer, OpenRouter and TheHive; HTTPS JSON from OpenRouter/Wazuh plus Markdown/
+HTML/Streamlit display; request/response structure (URL, headers, body, 200/201/202/4xx handling,
+Pydantic models); and public OpenRouter vs private Wazuh/TheHive/loopback APIs. Honest gaps recorded:
+no PUT/DELETE, project's own APIs are plain-HTTP loopback with no auth, Wazuh `verify_tls=false`
+by default, TheHive optional. No code changed. Tests not re-run here (Mac venv absent on this mount).
+Uncommitted.
+
+**Previous (2026-11-19, docs): Added `python_1/Conduct_a_Vulnerability_Assessment.md`.**
 A rubric-scoped write-up using ONLY existing evidence: the Nmap 7.94/NSE assessment of the Wazuh/OpenSearch
 host `10.11.3.185` recorded in `Vulnerability_Assessment_Report.md` and its raw scan PDF. It lists two
 web-service findings (9200 OpenSearch exposure, 443 `osd-name` fingerprint disclosure), both honestly
@@ -770,6 +781,11 @@ What exists today (capstone):
 
 ## Change log
 
+- **2026-11-22 (docs)** — Added four rubric write-ups under `ai_api_integration_1/`
+   (`restful_api_method_utilization.md`, `format_and_display_api_data.md`,
+   `structuring_api_requests_and_responses.md`, `implement_open_or_secured_apis.md`), each citing
+   existing code/docs with file:line references. No source code or API behaviour changed; tests not
+   re-run on this Windows mount (project venv is macOS-only). Uncommitted.
 - **2026-11-19 (docs, 2nd)** — Added `python_1/Conduct_a_Vulnerability_Assessment.md`
   using only existing evidence: the Nmap/NSE scan of Wazuh/OpenSearch host `10.11.3.185` from
   `Vulnerability_Assessment_Report.md` and its raw PDF. Two web-service findings (9200 exposure, 443
